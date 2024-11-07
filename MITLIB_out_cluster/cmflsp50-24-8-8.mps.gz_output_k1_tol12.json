@@ -1,0 +1,43 @@
+{
+    "relative_l_inf_primal_residual": [
+        0.0028443749693950774,
+        1.1117453805794429e-11
+    ],
+    "instance": "./MIPLIB/cmflsp50-24-8-8.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        5.457938607007669e7,
+        5.4633108509319305e7
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        1.3110222059443564e-6,
+        8.015108517323601e-17
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        5.467902902276018e7,
+        5.463310850928071e7
+    ],
+    "l_inf_primal_residual": [
+        4.901426947261598,
+        1.915759639814496e-8
+    ],
+    "relative_optimality_gap": [
+        0.0009119933845537985,
+        3.532107927950403e-13
+    ],
+    "total_time": 16.439605951309204,
+    "l_inf_dual_residual": [
+        14.530622979132078,
+        8.883489499567077e-10
+    ],
+    "blackbox_time": [
+        1.6370508670806885,
+        14.79239296913147
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

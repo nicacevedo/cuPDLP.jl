@@ -1,0 +1,43 @@
+{
+    "relative_l_inf_primal_residual": [
+        0.013244428619248572,
+        1.661881854353453e-9
+    ],
+    "instance": "./MIPLIB/2club200v15p5scn.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        -121.59777737441719,
+        -121.22222222369518
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        2.1813991350258383e-5,
+        2.375803597772083e-13
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        -121.68362647367971,
+        -121.22222221993883
+    ],
+    "l_inf_primal_residual": [
+        0.026488857238497143,
+        3.323763708706906e-9
+    ],
+    "relative_optimality_gap": [
+        0.0003514352624070473,
+        1.5430030598784416e-11
+    ],
+    "total_time": 11.966831922531128,
+    "l_inf_dual_residual": [
+        4.3627982700516766e-5,
+        4.751607195544166e-13
+    ],
+    "blackbox_time": [
+        3.164638042449951,
+        8.790696144104004
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

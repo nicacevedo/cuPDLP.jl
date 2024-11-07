@@ -1,0 +1,34 @@
+{
+    "instance": "./MIPLIB/ex1010-pi.mps.gz",
+    "primal_dual_gap": [
+        -0.001108141891052128
+    ],
+    "final iteration": 0,
+    "time_sec_limit": 600,
+    "bb_dual_objective": [
+        220.6700831781665
+    ],
+    "max_iter": 0.0,
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "bb_primal_objective": [
+        220.67008703196484
+    ],
+    "bb_relative_optimality_gap": [
+        8.712295664393364e-9
+    ],
+    "initial_tol": 1.0e-8,
+    "optimal_primal_cost": [
+        220.67008703196484
+    ],
+    "total_time": 42.45700001716614,
+    "blackbox_time": [
+        42.455000162124634
+    ],
+    "optimal_dual_cost": [
+        220.6711951738559
+    ],
+    "max_delta_feas_opt": [
+        6.027788512774634e-8
+    ]
+}

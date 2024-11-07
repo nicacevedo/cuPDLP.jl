@@ -1,0 +1,43 @@
+{
+    "relative_l_inf_primal_residual": [
+        2.917822914531165e-5,
+        1.4938492283456117e-14
+    ],
+    "instance": "./MIPLIB/brazil3.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        -8.376615714955626e-7,
+        1.9999997559934855
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        1.1663175216811976e-7,
+        1.82700521378365e-11
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        0.0,
+        1.9999999998919176
+    ],
+    "l_inf_primal_residual": [
+        0.02917822914531165,
+        1.4938492283456117e-11
+    ],
+    "relative_optimality_gap": [
+        8.376608698192421e-7,
+        4.877968880503923e-8
+    ],
+    "total_time": 8.431713104248047,
+    "l_inf_dual_residual": [
+        2.332635043362395e-7,
+        3.6540104275673e-11
+    ],
+    "blackbox_time": [
+        1.130263090133667,
+        7.290781021118164
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

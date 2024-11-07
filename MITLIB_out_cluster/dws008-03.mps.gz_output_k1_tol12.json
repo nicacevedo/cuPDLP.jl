@@ -1,0 +1,43 @@
+{
+    "relative_l_inf_primal_residual": [
+        8.951416675403175e-7,
+        1.9203857723245952e-16
+    ],
+    "instance": "./MIPLIB/dws008-03.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        584.0535090234972,
+        584.4999999990619
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        2.8042952010831924e-7,
+        1.1360495494024305e-16
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        584.505539280271,
+        584.5
+    ],
+    "l_inf_primal_residual": [
+        0.000132480966795967,
+        2.842170943040401e-14
+    ],
+    "relative_optimality_gap": [
+        0.0003864963102370909,
+        8.018322947688272e-13
+    ],
+    "total_time": 4.191004991531372,
+    "l_inf_dual_residual": [
+        0.0007995045618288182,
+        3.2388772653463294e-13
+    ],
+    "blackbox_time": [
+        2.671553134918213,
+        1.501939058303833
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

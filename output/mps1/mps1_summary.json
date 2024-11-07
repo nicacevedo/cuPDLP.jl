@@ -1,0 +1,52 @@
+{
+    "instance_name": "mps1",
+    "command_line_invocation": "scripts/solve.jl --instance_path=./instance/mps1.mps --output_directory=./output --tolerance=0.0001 --time_sec_limit=300",
+    "termination_reason": "TERMINATION_REASON_OPTIMAL",
+    "termination_string": "OPTIMAL",
+    "iteration_count": 128,
+    "solve_time_sec": 1.7890000343322754,
+    "solution_stats": {
+        "iteration_number": 128,
+        "convergence_information": [
+            {
+                "candidate_type": "POINT_TYPE_AVERAGE_ITERATE",
+                "primal_objective": 53.99999999999972,
+                "dual_objective": 53.999999999999886,
+                "corrected_dual_objective": 53.999999999999886,
+                "l_inf_primal_residual": 3.375077994860476e-14,
+                "l2_primal_residual": 4.532539037252542e-14,
+                "l_inf_dual_residual": 0.0,
+                "l2_dual_residual": 0.0,
+                "relative_l_inf_primal_residual": 3.0682527226004327e-15,
+                "relative_l2_primal_residual": 3.1939744020431566e-15,
+                "relative_l_inf_dual_residual": 0.0,
+                "relative_l2_dual_residual": 0.0,
+                "relative_optimality_gap": 1.4993103598607673e-15,
+                "l_inf_primal_variable": 5.999999999999969,
+                "l2_primal_variable": 7.280109889280494,
+                "l_inf_dual_variable": 6.030940515705801,
+                "l2_dual_variable": 6.722169123523966
+            }
+        ],
+        "infeasibility_information": [
+            {
+                "candidate_type": "POINT_TYPE_AVERAGE_ITERATE",
+                "max_primal_ray_infeasibility": 1.1666666666666672,
+                "primal_ray_linear_objective": 9.0,
+                "max_dual_ray_infeasibility": 1.4923045545818499,
+                "dual_ray_objective": 8.953827327491103
+            }
+        ],
+        "cumulative_kkt_matrix_passes": 154.5,
+        "cumulative_rejected_steps": 0,
+        "cumulative_time_sec": 1.7890000343322754,
+        "restart_used": "RESTART_CHOICE_UNSPECIFIED",
+        "step_size": 1.104827697996916,
+        "primal_weight": 3.263807073993279,
+        "method_specific_stats": {
+            "time_spent_doing_basic_algorithm": 0.11999964714050293
+        }
+    },
+    "solution_type": "POINT_TYPE_AVERAGE_ITERATE",
+    "iteration_stats": []
+}

@@ -1,0 +1,34 @@
+{
+    "instance": "./MIPLIB/ci-s4.mps.gz",
+    "primal_dual_gap": [
+        -1.764310909984816e7
+    ],
+    "final iteration": 0,
+    "time_sec_limit": 600,
+    "bb_dual_objective": [
+        7.803968997775689e6
+    ],
+    "max_iter": 0.0,
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "bb_primal_objective": [
+        -132.03946095187482
+    ],
+    "bb_relative_optimality_gap": [
+        0.9999998718622597
+    ],
+    "initial_tol": 1.0e-8,
+    "optimal_primal_cost": [
+        -132.03946095187484
+    ],
+    "total_time": 30.467999935150146,
+    "blackbox_time": [
+        30.467999935150146
+    ],
+    "optimal_dual_cost": [
+        1.7642977060387205e7
+    ],
+    "max_delta_feas_opt": [
+        504724.7148476881
+    ]
+}

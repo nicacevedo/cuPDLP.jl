@@ -149,11 +149,14 @@ end
 function main()
     parsed_args = parse_command_line()
     instance_path = parsed_args["instance_path"]
+    println("Instance path: ", instance_path)
     tolerance = parsed_args["tolerance"]
     time_sec_limit = parsed_args["time_sec_limit"]
     output_directory = parsed_args["output_directory"]
 
+    println("Trying to read instance from ", instance_path)
     lp = cuPDLP.qps_reader_to_standard_form(instance_path)
+    println("Instance read successfully")
 
     oldstd = stdout
     redirect_stdout(devnull)

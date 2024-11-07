@@ -1,0 +1,43 @@
+{
+    "relative_l_inf_primal_residual": [
+        0.0872755925684802,
+        3.125036145717231e-10
+    ],
+    "instance": "./MIPLIB/ci-s4.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        7.803968997775685e6,
+        55.98434077062032
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        0.01770931513971195,
+        7.350739529549512e-5
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        -132.03946095187482,
+        110.83865565231525
+    ],
+    "l_inf_primal_residual": [
+        129080.68868437479,
+        0.00046219315845519304
+    ],
+    "relative_optimality_gap": [
+        0.9999998718622597,
+        0.3268581544298911
+    ],
+    "total_time": 121.0789999961853,
+    "l_inf_dual_residual": [
+        0.03455912084616259,
+        0.0001434471597045045
+    ],
+    "blackbox_time": [
+        79.57399988174438,
+        41.450000047683716
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

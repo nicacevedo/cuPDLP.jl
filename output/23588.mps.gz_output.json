@@ -1,0 +1,28 @@
+{
+    "instance": "./instance/23588.mps.gz",
+    "primal_dual_gap": [
+        -682.0462205312506,
+        -486.5657672188745
+    ],
+    "final iteration": 1,
+    "time_sec_limit": 300,
+    "optimal_cost": [
+        7641.094105946086,
+        7649.866133744598
+    ],
+    "max_iter": 5,
+    "objective_tol": 1.0e-8,
+    "optimality_gap": [
+        0.6570305142378727,
+        8.349843483301811e-9
+    ],
+    "initial_tol": 0.001,
+    "blackbox_time": [
+        0.875,
+        19.124000072479248
+    ],
+    "optimal_dual_cost": [
+        8323.140326477336,
+        8136.431900963473
+    ]
+}

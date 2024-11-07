@@ -1,0 +1,33 @@
+{
+    "instance": "./instance/2club200v15p5scn.mps.gz",
+    "primal_dual_gap": [
+        -17.60989561579666
+    ],
+    "final iteration": 0,
+    "feasibility_optimality_gap": [
+        5.167075646239638e-7
+    ],
+    "time_sec_limit": 60,
+    "bb_dual_objective": [
+        -121.22222339820277
+    ],
+    "max_iter": 0.0,
+    "objective_tol": 1.0e-8,
+    "bb_primal_objective": [
+        -121.22222264711411
+    ],
+    "bb_relative_optimality_gap": [
+        3.085256926028372e-9
+    ],
+    "initial_tol": 1.0e-8,
+    "optimal_primal_cost": [
+        -121.22222264711411
+    ],
+    "total_time": 41.71300005912781,
+    "blackbox_time": [
+        41.65499997138977
+    ],
+    "optimal_dual_cost": [
+        -103.61232703131745
+    ]
+}
