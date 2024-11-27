@@ -1,0 +1,66 @@
+{
+    "relative_l_inf_primal_residual": [
+        0.003891669008715424,
+        4.233284430070357e-11,
+        4.233284430070357e-11
+    ],
+    "instance": "/nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/radiationm40-10-02.mps.gz",
+    "time_sec_limit": 3600,
+    "dual_objective": [
+        142071.3718235308,
+        -1.7821914335017456e10,
+        -1.7821914335017456e10
+    ],
+    "max_iter": 1000.0,
+    "relative_l_inf_dual_residual": [
+        0.00010673300495957452,
+        118.05079536947534,
+        118.05079536947534
+    ],
+    "objective_tol": 1.0e-8,
+    "termination_reason": [
+        "TERMINATION_REASON_OPTIMAL",
+        "TERMINATION_REASON_TIME_LIMI   T",
+        "TERMINATION_REASON_TIME_LIMIT"
+    ],
+    "D2_condition_number": [
+        1.0,
+        1.0,
+        2.1736393464590185e6
+    ],
+    "alpha": 1.01,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        141891.37506053818,
+        170882.1947552167,
+        170882.1947552167
+    ],
+    "l_inf_primal_residual": [
+        0.042808359095869664,
+        4.656612873077393e-10,
+        4.656612873077393e-10
+    ],
+    "relative_optimality_gap": [
+        0.0006338723339430225,
+        0.9999999999438899,
+        0.9999999999438899
+    ],
+    "D1_condition_number": [
+        1.0,
+        1.0,
+        1.0
+    ],
+    "last_iteration": 2,
+    "total_time": 3603.911992073059,
+    "l_inf_dual_residual": [
+        0.00021346600991914904,
+        236.10159073895068,
+        236.10159073895068
+    ],
+    "blackbox_time": [
+        798.617742061615,
+        2803.0437109470367,
+        2.0073070526123047
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

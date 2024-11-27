@@ -10,6 +10,8 @@ import cuPDLP
 using LinearAlgebra
 using SparseArrays
 using CUDA
+# CUDA.set_runtime_version!(local_toolkit=true)
+# CUDA.set_runtime_version!(v"v0.12.1.1")
 
 function write_vector_to_file(filename, vector)
     open(filename, "w") do io
@@ -138,15 +140,25 @@ function parse_command_line()
         arg_type = String
         required = true
 
-        "--tolerance"
-        help = "KKT tolerance of the solution."
+        "--iter_tolerance"
+        help = "IR iters KKT tolerance of the solution."
         arg_type = Float64
-        default = 1e-4
+        default = 1e-3
+
+        "--obj_tolerance"
+        help = "Final KKT tolerance of the solution."
+        arg_type = Float64
+        default = 1e-8
 
         "--time_sec_limit"
         help = "Time limit."
         arg_type = Float64
         default = 3600.0
+
+        "--max_iter"
+        help = "Maximum of desired iterations in IR"
+        arg_type = Int64
+        default = 10
     end
 
     return ArgParse.parse_args(arg_parse)
@@ -180,17 +192,12 @@ function LP_to_quasi_standard_form(lp::cuPDLP.QuadraticProgrammingProblem)
     # AI*x >= bI -> AI*x - slacks = bI  
     # l <= x <= u
     A = lp.constraint_matrix # sparse format matrix
-    # println(" objective matrix: ", lp.objective_matrix)
-    # println("A nonsparse: ", Matrix(A))
-    # # println("sparse A: ", A)
-    # println("num_eq: ", lp.num_equalities)
-    # println("shape of sparse A: ", size(A))
 
     # You can write A = [AE 0; AI -I], with I of slacks
     n_inequalities = size(A, 1) - lp.num_equalities # num of slacks to add
     if n_inequalities > 0 
         # Identify matrix to add slack variables
-        I = Matrix{Float64}(LinearAlgebra.I, n_inequalities, n_inequalities)
+        I = SparseArrays.sparse(LinearAlgebra.I, n_inequalities, n_inequalities)
 
         # Add n_eq columns and rows of zeros to I
         Z_I = [
@@ -202,17 +209,14 @@ function LP_to_quasi_standard_form(lp::cuPDLP.QuadraticProgrammingProblem)
         # Add slack variables to the objective function
         c = lp.objective_vector
         c = [c; zeros(n_inequalities)]
-        # c = vcat(c, zeros(n_inequalities))
 
         # Add slack variables to the upper bound
         u = lp.variable_upper_bound
         u = [u; Inf*ones(n_inequalities)]
-        # u = vcat(u, Inf*ones(n_inequalities))
 
         # Add slack variables to the lower bound
         l = lp.variable_lower_bound
         l = [l; zeros(n_inequalities)]
-        # l = vcat(l, zeros(n_inequalities))
 
         # Update the LP
         lp.constraint_matrix = A
@@ -221,7 +225,6 @@ function LP_to_quasi_standard_form(lp::cuPDLP.QuadraticProgrammingProblem)
         lp.variable_lower_bound = l
         lp.num_equalities = size(A, 1)
         lp.objective_matrix =  sparse(Int64[], Int64[], Float64[], size(c, 1), size(c, 1))
-        # println("lp after adding slacks: ", lp)
 
     end
     return lp
@@ -363,18 +366,6 @@ function iterative_refinement(
     optimal_primal_cost = sum(c.*x_k)
     optimal_dual_cost = sum(b.*y_k)
 
-    # Old metrics
-    # log = cuPDLP.SolveLog()
-    # # log.instance_name = instance_name
-    # # log.command_line_invocation = join([PROGRAM_FILE; ARGS...], " ")
-    # println("termination_reason: ", output.termination_reason)
-    # println("termination_string: ", output.termination_string)
-    # println("iteration_count: ", output.iteration_count)
-    # println("solve_time_sec: ", output.iteration_stats[end].cumulative_time_sec)
-    # println("solution_stats: ", output.iteration_stats[end])
-
-
-
     # Calculate the KKT error of the problem
     primal_size = size(x_k)[1]
     dual_size = size(y_k)[1]
@@ -418,20 +409,6 @@ function iterative_refinement(
         CuVector{Float64}(c - A'y_k),#::CuVector{Float64},
         buffer_kkt#::BufferKKTState,
     )
-    # # println("CONVERGENCE INFO: ", convergence_info)
-    # println("candidate_type", convergence_info.candidate_type) # candidate_type
-    # println("primal_objective", convergence_info.primal_objective) # Optimal objective value
-    # println("dual_objective", convergence_info.dual_objective) # Optimal dual objective value
-    # println("l_inf_primal_residual", convergence_info.l_inf_primal_residual) # l_inf_primal_residual
-    # println("l_inf_dual_residual", convergence_info.l_inf_dual_residual) # l_inf_dual_residual
-    # println("relative_l_inf_primal_residual", convergence_info.relative_l_inf_primal_residual) # relative_l_inf_primal_residual 
-    # println("relative_l_inf_dual_residual", convergence_info.relative_l_inf_dual_residual) # relative_l_inf_dual_residual
-    # println("relative_optimality_gap", convergence_info.relative_optimality_gap) # relative_optimality_gap
-    # exit()
-
-
-
-    # exit()
 
     # Update the output metrics
     push!(out["blackbox_time"], t_pdlp_0)
@@ -442,19 +419,6 @@ function iterative_refinement(
     push!(out["relative_l_inf_primal_residual"], convergence_info.relative_l_inf_primal_residual)
     push!(out["relative_l_inf_dual_residual"], convergence_info.relative_l_inf_dual_residual)
     push!(out["relative_optimality_gap"], convergence_info.relative_optimality_gap)
-
-
-
-
-    
-    # push!(out["optimal_primal_cost"], optimal_primal_cost)
-    # push!(out["optimal_dual_cost"], optimal_dual_cost)
-    # push!(out["primal_dual_gap"], optimal_primal_cost - optimal_dual_cost)
-    # push!(out["bb_primal_objective"], output.iteration_stats[end].convergence_information[1].primal_objective)
-    # push!(out["bb_dual_objective"], output.iteration_stats[end].convergence_information[1].dual_objective)
-    # push!(out["bb_relative_optimality_gap"], output.iteration_stats[end].convergence_information[1].relative_optimality_gap)
-    # push!(out["max_delta_feas_opt"], initial_tol)
-
 
     # Algorithm loop
     k = 0
@@ -481,22 +445,19 @@ function iterative_refinement(
                 -c_bar[x_k .<= (l + u) / 2]
                 ])
         ])
-        delta_S = abs(
-            -sum(l_bar[x_k .<= (l + u) / 2] .* c_bar[x_k .<= (l + u) / 2], init=0) +
-            sum(u_bar[x_k .> (l + u) / 2] .* c_bar[x_k .> (l + u) / 2], init=0)
-        )
+        # delta_S = abs(
+        #     -sum(l_bar[x_k .<= (l + u) / 2] .* c_bar[x_k .<= (l + u) / 2], init=0) +
+        #     sum(u_bar[x_k .> (l + u) / 2] .* c_bar[x_k .> (l + u) / 2], init=0)
+        # )
 
         println("delta_P: ", delta_P)
         println("delta_D: ", delta_D)
-        println("delta_S: ", delta_S)
+        # println("delta_S: ", delta_S)
         # println("c", c)
         # println("A'*y_k", A'*y_k)
 
-        # Update the output metrics
-        # push!(out["max_delta_feas_opt"], maximum([delta_P, delta_D, delta_S]))
-
         # Check the optimality condition for objective tolerance
-        # if delta_P <= objective_tol && delta_D <= objective_tol && delta_S <= objective_tol || k >= max_iter || remaining_time <= 0
+        # (old from IR) if delta_P <= objective_tol && delta_D <= objective_tol && delta_S <= objective_tol || k >= max_iter || remaining_time <= 0
         if convergence_info.relative_optimality_gap <= objective_tol && convergence_info.relative_l_inf_primal_residual <= objective_tol && convergence_info.relative_l_inf_dual_residual <= objective_tol || k >= max_iter || remaining_time <= 0
             total_time = time() - total_time
 
@@ -548,36 +509,6 @@ function iterative_refinement(
         optimal_dual_cost = sum(b.*y_k)
         println("optimal_primal_cost on k=",k,": ", optimal_primal_cost)
         println("optimal_dual_cost on k=",k,": ", optimal_dual_cost)
-        
-
-        # # Calculate the KKT error of the problem
-        # primal_size = size(x_k)[1]
-        # dual_size = size(y_k)[1]
-        # num_eq = lp.num_equalities
-        # buffer_original = cuPDLP.BufferOriginalSol(
-        #     CUDA.zeros(Float64, primal_size),      # primal
-        #     CUDA.zeros(Float64, dual_size),        # dual
-        #     CUDA.zeros(Float64, dual_size),        # primal_product
-        #     CUDA.zeros(Float64, primal_size),      # primal_gradient
-        # )
-
-        # buffer_kkt = cuPDLP.BufferKKTState(
-        #     buffer_original.original_primal_solution,      # primal
-        #     buffer_original.original_dual_solution,        # dual
-        #     buffer_original.original_primal_product,        # primal_product
-        #     buffer_original.original_primal_gradient,      # primal_gradient
-        #     CUDA.zeros(Float64, primal_size),      # lower_variable_violation
-        #     CUDA.zeros(Float64, primal_size),      # upper_variable_violation
-        #     CUDA.zeros(Float64, dual_size),        # constraint_violation
-        #     CUDA.zeros(Float64, primal_size),      # dual_objective_contribution_array
-        #     CUDA.zeros(Float64, primal_size),      # reduced_costs_violations
-        #     cuPDLP.CuDualStats(
-        #         0.0,
-        #         CUDA.zeros(Float64, dual_size - num_eq),
-        #         CUDA.zeros(Float64, primal_size),
-        #     ),
-        #     0.0,                                   # dual_res_inf
-        # )
 
         # Calculate the KKT error of the problem
         qp_cache = cuPDLP.cached_quadratic_program_info(lp_0_stand) # As in "optimize" function (line 462)
@@ -593,16 +524,6 @@ function iterative_refinement(
             CuVector{Float64}(c - A'y_k),#::CuVector{Float64},
             buffer_kkt#::BufferKKTState,
         )
-        # println("CONVERGENCE INFO: ", convergence_info)
-        # println("candidate_type", convergence_info.candidate_type) # candidate_type
-        # println("primal_objective", convergence_info.primal_objective) # Optimal objective value
-        # println("dual_objective", convergence_info.dual_objective) # Optimal dual objective value
-        # println("l_inf_primal_residual", convergence_info.l_inf_primal_residual) # l_inf_primal_residual
-        # println("l_inf_dual_residual", convergence_info.l_inf_dual_residual) # l_inf_dual_residual
-        # println("relative_l_inf_primal_residual", convergence_info.relative_l_inf_primal_residual) # relative_l_inf_primal_residual 
-        # println("relative_l_inf_dual_residual", convergence_info.relative_l_inf_dual_residual) # relative_l_inf_dual_residual
-        # println("relative_optimality_gap", convergence_info.relative_optimality_gap) # relative_optimality_gap
-        
 
         # Update the output metrics
         push!(out["blackbox_time"], t_pdlp_k)
@@ -617,20 +538,26 @@ function iterative_refinement(
     end
 end
 
+function main(
+    instance_index::Int,
+)
+        
 
-# instance_name = "2club200v15p5scn.mps.gz"
-instance_dir = "./MIPLIB/"
-# instance_path = instance_dir * instance_name 
-output_dir = "./MIPLIB_output/"
-tol_it_ref = 1e-3
-tol_objective = 1e-8
-time_sec_limit = 600 
-# max_iter = 1e3
-# Read all the files in the instance directory
-instance_files = readdir(instance_dir)
+    # instance_name = "2club200v15p5scn.mps.gz"
+    instance_dir = "./MIPLIB/"
+    # instance_path = instance_dir * instance_name 
+    output_dir = "./MIPLIB_output/"
+    tol_it_ref = 1e-3
+    tol_objective = 1e-8
+    time_sec_limit = 3600 
+    max_iter = 1e3
+    # Read all the files in the instance directory
+    instance_files = readdir(instance_dir)
 
-for instance_name in reverse(instance_files[1:end-1])# ["ci-s4.mps.gz"]# reverse(instance_files)#[15:end]
-    for max_iter in [0,5]
+    # Iterate over the instances (test version)
+    # for instance_name in reverse(instance_files[1:end-1])# ["ci-s4.mps.gz"]# reverse(instance_files)#[15:end]
+    instance_name = instance_files[instance_index]
+    for max_iter in [0,max_iter]
         println("-----------------------------------")
         println("Instance: ", instance_name, " max_iter: ", max_iter)
         instance_path = instance_dir * instance_name
@@ -652,6 +579,79 @@ for instance_name in reverse(instance_files[1:end-1])# ["ci-s4.mps.gz"]# reverse
         # plot(output["max_delta_feas_opt"], label="max_delta_feas_opt", title="Optimality gap vs iteration")
         # savefig(output_dir * instance_name * "_optimality_gap_vs_iteration.png")
     end
+    # end
 end
+# # Read the command line
+# args = parse_command_line()
+# instance_dir = args["instance_path"]
+# instance_name = basename(instance_dir)
+# instance_name = replace(instance_name, r"\.(mps|MPS|qps|QPS)(\.gz)?$" => "") # delete extension from instance_name
+# output_dir = args["output_directory"]
+# tol_it_ref = args["iter_tolerance"]
+# tol_objective = args["obj_tolerance"]
+# time_sec_limit = args["time_sec_limit"]
+# max_iter = args["max_iter"]
 
 
+
+# # Batch version
+# println("-----------------------------------")
+# println("Instance: ", instance_name, " max_iter: ", max_iter)
+# # instance_path = instance_dir * instance_name
+# # println("Instance path: ", )
+# if max_iter == 0
+#     output = iterative_refinement(instance_dir, tol_objective, tol_objective, time_sec_limit, max_iter)
+# else
+#     output = iterative_refinement(instance_dir, tol_it_ref, tol_objective, time_sec_limit, max_iter)
+# end
+
+# # Save the output in .json format
+# output_path = output_dir * "/" * instance_name * "_out_k"*string(output["final iteration"])*".json"
+# open(output_path, "w") do io
+#     write(io, JSON3.write(output, allow_inf = true))
+# end
+
+
+
+
+
+
+
+
+
+# instance_name = "2club200v15p5scn.mps.gz"
+# instance_dir = "./MIPLIB/"
+# instance_path = instance_dir * instance_name 
+# output_dir = "./MIPLIB_output/"
+# tol_it_ref = 1e-3
+# tol_objective = 1e-8
+# time_sec_limit = 600 
+# max_iter = 1e3
+# Read all the files in the instance directory
+# instance_files = readdir(instance_dir)
+
+# # Iterate over the instances (test version)
+# for instance_name in reverse(instance_files[1:end-1])# ["ci-s4.mps.gz"]# reverse(instance_files)#[15:end]
+#     for max_iter in [0,5]
+#         println("-----------------------------------")
+#         println("Instance: ", instance_name, " max_iter: ", max_iter)
+#         instance_path = instance_dir * instance_name
+#         if max_iter == 0
+#             output = iterative_refinement(instance_path, tol_objective, tol_objective, time_sec_limit, max_iter)
+#         else
+#             output = iterative_refinement(instance_path, tol_it_ref, tol_objective, time_sec_limit, max_iter)
+#         end
+#         println(output)
+
+#         # Save the output in .json format
+#         output_path = output_dir * instance_name * "_output_k"*string(output["final iteration"])*"_tol12.json"
+#         open(output_path, "w") do io
+#             write(io, JSON3.write(output, allow_inf = true))
+#         end
+
+#         # # Plot the max_delta_feas_opt vs iteration
+#         # using Plots
+#         # plot(output["max_delta_feas_opt"], label="max_delta_feas_opt", title="Optimality gap vs iteration")
+#         # savefig(output_dir * instance_name * "_optimality_gap_vs_iteration.png")
+#     end
+# end

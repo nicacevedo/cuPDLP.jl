@@ -1,0 +1,55 @@
+{
+    "relative_l_inf_primal_residual": [
+        0.0031872064460838592,
+        4.950373271028763e-11
+    ],
+    "instance": "/nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5049753-cuanza.mps.gz",
+    "time_sec_limit": 600,
+    "dual_objective": [
+        464.8208693154816,
+        463.9999999989261
+    ],
+    "max_iter": 1000.0,
+    "relative_l_inf_dual_residual": [
+        0.004280804830255013,
+        1.4725877042423433e-11
+    ],
+    "objective_tol": 1.0e-8,
+    "termination_reason": [
+        "TERMINATION_REASON_OPTIMAL",
+        "TERMINATION_REASON_OPTIMAL"
+    ],
+    "D2_condition_number": [
+        1.0,
+        1.354657278268956
+    ],
+    "alpha": 101.0,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        464.6313710147033,
+        463.9999999970245
+    ],
+    "l_inf_primal_residual": [
+        0.009561619338251578,
+        1.4851119813086289e-10
+    ],
+    "relative_optimality_gap": [
+        0.00020366257671761744,
+        2.0469749564884396e-12
+    ],
+    "D1_condition_number": [
+        1.0,
+        1.0
+    ],
+    "last_iteration": 1,
+    "total_time": 10.13335108757019,
+    "l_inf_dual_residual": [
+        0.008561609660510026,
+        2.9451754084846866e-11
+    ],
+    "blackbox_time": [
+        3.723292112350464,
+        6.073490142822266
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

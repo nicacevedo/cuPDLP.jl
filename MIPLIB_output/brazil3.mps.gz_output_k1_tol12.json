@@ -1,1 +1,43 @@
-{"relative_l_inf_primal_residual":[2.956382813652303e-5,4.0803271872391633e-13],"instance":"./MIPLIB/brazil3.mps.gz","final iteration":1,"time_sec_limit":600,"dual_objective":[-8.056296402261798e-5,1.9999999031424522],"max_iter":5,"relative_l_inf_dual_residual":[1.1629138928198925e-7,5.268882852023521e-12],"objective_tol":1.0e-8,"max_time":600,"initial_tol":0.001,"primal_objective":[0.0,1.9999999778905713],"l_inf_primal_residual":[0.02956382813652303,4.0803271872391633e-10],"relative_optimality_gap":[8.05564741542889e-5,1.4949624161251413e-8],"total_time":42.19700002670288,"l_inf_dual_residual":[2.325827785639785e-7,1.0537765704047042e-11],"blackbox_time":[4.796000003814697,37.359999895095825],"candidate_type":"POINT_TYPE_AVERAGE_ITERATE"}
+{
+    "relative_l_inf_primal_residual": [
+        2.956382813652303e-5,
+        4.0803271872391633e-13
+    ],
+    "instance": "./MIPLIB/brazil3.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        -8.056296402261798e-5,
+        1.9999999031424522
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        1.1629138928198925e-7,
+        5.268882852023521e-12
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        0.0,
+        1.9999999778905713
+    ],
+    "l_inf_primal_residual": [
+        0.02956382813652303,
+        4.0803271872391633e-10
+    ],
+    "relative_optimality_gap": [
+        8.05564741542889e-5,
+        1.4949624161251413e-8
+    ],
+    "total_time": 42.19700002670288,
+    "l_inf_dual_residual": [
+        2.325827785639785e-7,
+        1.0537765704047042e-11
+    ],
+    "blackbox_time": [
+        4.796000003814697,
+        37.359999895095825
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

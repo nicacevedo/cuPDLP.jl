@@ -1,1 +1,43 @@
-{"relative_l_inf_primal_residual":[2.1608623721520806e-5,7.462558784998748e-13],"instance":"./MIPLIB/rmatr200-p10.mps.gz","final iteration":1,"time_sec_limit":600,"dual_objective":[1548.4773274021359,1550.6207829768928],"max_iter":5,"relative_l_inf_dual_residual":[2.3773389567688433e-6,5.477222341198153e-15],"objective_tol":1.0e-8,"max_time":600,"initial_tol":0.001,"primal_objective":[1551.5221117714393,1550.6207830108228],"l_inf_primal_residual":[0.004127247130810474,1.425348727934761e-10],"relative_optimality_gap":[0.0009818719509716797,1.0937273377964309e-11],"total_time":190.4779999256134,"l_inf_dual_residual":[0.005765046970164445,1.3282264177405523e-11],"blackbox_time":[82.94099998474121,107.45900011062622],"candidate_type":"POINT_TYPE_AVERAGE_ITERATE"}
+{
+    "relative_l_inf_primal_residual": [
+        2.1608623721520806e-5,
+        7.462558784998748e-13
+    ],
+    "instance": "./MIPLIB/rmatr200-p10.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        1548.4773274021359,
+        1550.6207829768928
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        2.3773389567688433e-6,
+        5.477222341198153e-15
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        1551.5221117714393,
+        1550.6207830108228
+    ],
+    "l_inf_primal_residual": [
+        0.004127247130810474,
+        1.425348727934761e-10
+    ],
+    "relative_optimality_gap": [
+        0.0009818719509716797,
+        1.0937273377964309e-11
+    ],
+    "total_time": 190.4779999256134,
+    "l_inf_dual_residual": [
+        0.005765046970164445,
+        1.3282264177405523e-11
+    ],
+    "blackbox_time": [
+        82.94099998474121,
+        107.45900011062622
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

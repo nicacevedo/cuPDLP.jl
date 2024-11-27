@@ -1,0 +1,43 @@
+{
+    "relative_l_inf_primal_residual": [
+        0.002199717341398899,
+        8.059825029604895e-10
+    ],
+    "instance": "./MIPLIB/ex1010-pi.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        220.27225386191026,
+        220.6700870350607
+    ],
+    "max_iter": 1000.0,
+    "relative_l_inf_dual_residual": [
+        0.0007639961851875199,
+        8.663616160332075e-12
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        220.70643873562855,
+        220.67008704516596
+    ],
+    "l_inf_primal_residual": [
+        0.004399434682797798,
+        1.611965005920979e-9
+    ],
+    "relative_optimality_gap": [
+        0.0009823660755376243,
+        2.2844982470480007e-11
+    ],
+    "total_time": 123.17700004577637,
+    "l_inf_dual_residual": [
+        0.0015279923703750398,
+        1.732723232066415e-11
+    ],
+    "blackbox_time": [
+        23.76900005340576,
+        99.30900001525879
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

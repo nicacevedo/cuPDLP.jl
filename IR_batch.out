@@ -1,0 +1,830 @@
+SMALL INSTANCES
+Solving the instance: var-smallemery-m6j6 w/ max_iter=0
+-----------------------------------
+Instance: var-smallemery-m6j6 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/var-smallemery-m6j6.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: var-smallemery-m6j6 w/ max_iter=inf
+-----------------------------------
+Instance: var-smallemery-m6j6 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/var-smallemery-m6j6.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: nursesched-medium-hint03 w/ max_iter=0
+-----------------------------------
+Instance: nursesched-medium-hint03 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/nursesched-medium-hint03.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: nursesched-medium-hint03 w/ max_iter=inf
+-----------------------------------
+Instance: nursesched-medium-hint03 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/nursesched-medium-hint03.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-2629914-sudost w/ max_iter=0
+-----------------------------------
+Instance: neos-2629914-sudost max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-2629914-sudost.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-2629914-sudost w/ max_iter=inf
+-----------------------------------
+Instance: neos-2629914-sudost max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-2629914-sudost.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4966258-blicks w/ max_iter=0
+-----------------------------------
+Instance: neos-4966258-blicks max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4966258-blicks.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-4966258-blicks w/ max_iter=inf
+-----------------------------------
+Instance: neos-4966258-blicks max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4966258-blicks.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-3755335-nizao w/ max_iter=0
+Solving the instance: neos-3755335-nizao w/ max_iter=inf
+Solving the instance: neos-3695882-vesdre w/ max_iter=0
+-----------------------------------
+Instance: neos-3695882-vesdre max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-3695882-vesdre.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-3695882-vesdre w/ max_iter=inf
+-----------------------------------
+Instance: neos-3695882-vesdre max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-3695882-vesdre.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos6 w/ max_iter=0
+-----------------------------------
+Instance: neos6 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos6.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos6 w/ max_iter=inf
+-----------------------------------
+Instance: neos6 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos6.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: cmflsp40-24-10-7 w/ max_iter=0
+-----------------------------------
+Instance: cmflsp40-24-10-7 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/cmflsp40-24-10-7.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: cmflsp40-24-10-7 w/ max_iter=inf
+-----------------------------------
+Instance: cmflsp40-24-10-7 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/cmflsp40-24-10-7.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: triptim7 w/ max_iter=0
+-----------------------------------
+Instance: triptim7 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/triptim7.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: triptim7 w/ max_iter=inf
+-----------------------------------
+Instance: triptim7 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/triptim7.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-2746589-doon w/ max_iter=0
+-----------------------------------
+Instance: neos-2746589-doon max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-2746589-doon.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-2746589-doon w/ max_iter=inf
+-----------------------------------
+Instance: neos-2746589-doon max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-2746589-doon.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: reblock420 w/ max_iter=0
+-----------------------------------
+Instance: reblock420 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/reblock420.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: reblock420 w/ max_iter=inf
+-----------------------------------
+Instance: reblock420 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/reblock420.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-872648 w/ max_iter=0
+Solving the instance: neos-872648 w/ max_iter=inf
+Solving the instance: neos-4760493-puerua w/ max_iter=0
+Solving the instance: neos-4760493-puerua w/ max_iter=inf
+Solving the instance: fhnw-schedule-pairb200 w/ max_iter=0
+Solving the instance: fhnw-schedule-pairb200 w/ max_iter=inf
+Solving the instance: sct1 w/ max_iter=0
+-----------------------------------
+Instance: sct1 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/sct1.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: sct1 w/ max_iter=inf
+-----------------------------------
+Instance: sct1 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/sct1.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: t1717 w/ max_iter=0
+-----------------------------------
+Instance: t1717 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/t1717.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: t1717 w/ max_iter=inf
+-----------------------------------
+Instance: t1717 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/t1717.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: iis-hc-cov w/ max_iter=0
+-----------------------------------
+Instance: iis-hc-cov max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/iis-hc-cov.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: iis-hc-cov w/ max_iter=inf
+-----------------------------------
+Instance: iis-hc-cov max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/iis-hc-cov.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: gmut-75-50 w/ max_iter=0
+-----------------------------------
+Instance: gmut-75-50 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/gmut-75-50.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: gmut-75-50 w/ max_iter=inf
+-----------------------------------
+Instance: gmut-75-50 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/gmut-75-50.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: t1722 w/ max_iter=0
+-----------------------------------
+Instance: t1722 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/t1722.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: t1722 w/ max_iter=inf
+-----------------------------------
+Instance: t1722 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/t1722.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: ex1010-pi w/ max_iter=0
+-----------------------------------
+Instance: ex1010-pi max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/ex1010-pi.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: ex1010-pi w/ max_iter=inf
+-----------------------------------
+Instance: ex1010-pi max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/ex1010-pi.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-5221106-oparau w/ max_iter=0
+-----------------------------------
+Instance: neos-5221106-oparau max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5221106-oparau.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-5221106-oparau w/ max_iter=inf
+-----------------------------------
+Instance: neos-5221106-oparau max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5221106-oparau.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-1354092 w/ max_iter=0
+-----------------------------------
+Instance: neos-1354092 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-1354092.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-1354092 w/ max_iter=inf
+-----------------------------------
+Instance: neos-1354092 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-1354092.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-827175 w/ max_iter=0
+-----------------------------------
+Instance: neos-827175 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-827175.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-827175 w/ max_iter=inf
+-----------------------------------
+Instance: neos-827175 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-827175.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: radiationm40-10-02 w/ max_iter=0
+Solving the instance: radiationm40-10-02 w/ max_iter=inf
+Solving the instance: nw04 w/ max_iter=0
+-----------------------------------
+Instance: nw04 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/nw04.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: nw04 w/ max_iter=inf
+-----------------------------------
+Instance: nw04 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/nw04.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4359986-taipa w/ max_iter=0
+-----------------------------------
+Instance: neos-4359986-taipa max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4359986-taipa.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4359986-taipa w/ max_iter=inf
+-----------------------------------
+Instance: neos-4359986-taipa max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4359986-taipa.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-960392 w/ max_iter=0
+-----------------------------------
+Instance: neos-960392 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-960392.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-960392 w/ max_iter=inf
+-----------------------------------
+Instance: neos-960392 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-960392.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: map18 w/ max_iter=0
+-----------------------------------
+Instance: map18 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/map18.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: map18 w/ max_iter=inf
+-----------------------------------
+Instance: map18 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/map18.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-932721 w/ max_iter=0
+-----------------------------------
+Instance: neos-932721 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-932721.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-932721 w/ max_iter=inf
+-----------------------------------
+Instance: neos-932721 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-932721.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: gmut-76-40 w/ max_iter=0
+-----------------------------------
+Instance: gmut-76-40 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/gmut-76-40.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: gmut-76-40 w/ max_iter=inf
+-----------------------------------
+Instance: gmut-76-40 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/gmut-76-40.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+MEDIUM INSTANCES
+Solving the instance: ds-big w/ max_iter=0
+-----------------------------------
+Instance: ds-big max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/ds-big.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: ds-big w/ max_iter=inf
+-----------------------------------
+Instance: ds-big max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/ds-big.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4647030-tutaki w/ max_iter=0
+-----------------------------------
+Instance: neos-4647030-tutaki max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4647030-tutaki.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4647030-tutaki w/ max_iter=inf
+-----------------------------------
+Instance: neos-4647030-tutaki max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4647030-tutaki.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-5129192-manaia w/ max_iter=0
+-----------------------------------
+Instance: neos-5129192-manaia max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5129192-manaia.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-5129192-manaia w/ max_iter=inf
+-----------------------------------
+Instance: neos-5129192-manaia max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5129192-manaia.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: graph40-80-1rand w/ max_iter=0
+-----------------------------------
+Instance: graph40-80-1rand max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/graph40-80-1rand.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: graph40-80-1rand w/ max_iter=inf
+-----------------------------------
+Instance: graph40-80-1rand max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/graph40-80-1rand.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-5049753-cuanza w/ max_iter=0
+-----------------------------------
+Instance: neos-5049753-cuanza max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5049753-cuanza.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-5049753-cuanza w/ max_iter=inf
+-----------------------------------
+Instance: neos-5049753-cuanza max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5049753-cuanza.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: seqsolve1 w/ max_iter=0
+-----------------------------------
+Instance: seqsolve1 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/seqsolve1.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: seqsolve1 w/ max_iter=inf
+-----------------------------------
+Instance: seqsolve1 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/seqsolve1.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-5102383-irwell w/ max_iter=0
+-----------------------------------
+Instance: neos-5102383-irwell max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5102383-irwell.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-5102383-irwell w/ max_iter=inf
+-----------------------------------
+Instance: neos-5102383-irwell max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5102383-irwell.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: bab6 w/ max_iter=0
+-----------------------------------
+Instance: bab6 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/bab6.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: bab6 w/ max_iter=inf
+-----------------------------------
+Instance: bab6 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/bab6.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-5123665-limmat w/ max_iter=0
+-----------------------------------
+Instance: neos-5123665-limmat max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5123665-limmat.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-5123665-limmat w/ max_iter=inf
+-----------------------------------
+Instance: neos-5123665-limmat max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5123665-limmat.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: shs1014 w/ max_iter=0
+-----------------------------------
+Instance: shs1014 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/shs1014.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: shs1014 w/ max_iter=inf
+-----------------------------------
+Instance: shs1014 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/shs1014.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: shs1042 w/ max_iter=0
+-----------------------------------
+Instance: shs1042 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/shs1042.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: shs1042 w/ max_iter=inf
+-----------------------------------
+Instance: shs1042 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/shs1042.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: wnq-n100-mw99-14 w/ max_iter=0
+-----------------------------------
+Instance: wnq-n100-mw99-14 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/wnq-n100-mw99-14.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: wnq-n100-mw99-14 w/ max_iter=inf
+-----------------------------------
+Instance: wnq-n100-mw99-14 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/wnq-n100-mw99-14.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: fhnw-binschedule0 w/ max_iter=0
+-----------------------------------
+Instance: fhnw-binschedule0 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/fhnw-binschedule0.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: fhnw-binschedule0 w/ max_iter=inf
+-----------------------------------
+Instance: fhnw-binschedule0 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/fhnw-binschedule0.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: fhnw-binschedule1 w/ max_iter=0
+-----------------------------------
+Instance: fhnw-binschedule1 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/fhnw-binschedule1.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: fhnw-binschedule1 w/ max_iter=inf
+-----------------------------------
+Instance: fhnw-binschedule1 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/fhnw-binschedule1.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-4321076-ruwer w/ max_iter=0
+-----------------------------------
+Instance: neos-4321076-ruwer max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4321076-ruwer.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-4321076-ruwer w/ max_iter=inf
+-----------------------------------
+Instance: neos-4321076-ruwer max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4321076-ruwer.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: physiciansched3-3 w/ max_iter=0
+-----------------------------------
+Instance: physiciansched3-3 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/physiciansched3-3.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: physiciansched3-3 w/ max_iter=inf
+-----------------------------------
+Instance: physiciansched3-3 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/physiciansched3-3.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-5079731-flyers w/ max_iter=0
+-----------------------------------
+Instance: neos-5079731-flyers max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5079731-flyers.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-5079731-flyers w/ max_iter=inf
+-----------------------------------
+Instance: neos-5079731-flyers max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5079731-flyers.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-3322547-alsek w/ max_iter=0
+-----------------------------------
+Instance: neos-3322547-alsek max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-3322547-alsek.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-3322547-alsek w/ max_iter=inf
+-----------------------------------
+Instance: neos-3322547-alsek max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-3322547-alsek.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4647027-thurso w/ max_iter=0
+-----------------------------------
+Instance: neos-4647027-thurso max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4647027-thurso.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4647027-thurso w/ max_iter=inf
+-----------------------------------
+Instance: neos-4647027-thurso max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4647027-thurso.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: ns1644855 w/ max_iter=0
+-----------------------------------
+Instance: ns1644855 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/ns1644855.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: ns1644855 w/ max_iter=inf
+-----------------------------------
+Instance: ns1644855 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/ns1644855.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: datt256 w/ max_iter=0
+-----------------------------------
+Instance: datt256 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/datt256.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: datt256 w/ max_iter=inf
+-----------------------------------
+Instance: datt256 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/datt256.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: kosova1 w/ max_iter=0
+Solving the instance: kosova1 w/ max_iter=inf
+Solving the instance: neos-4533806-waima w/ max_iter=0
+-----------------------------------
+Instance: neos-4533806-waima max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4533806-waima.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4533806-waima w/ max_iter=inf
+-----------------------------------
+Instance: neos-4533806-waima max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4533806-waima.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4647032-veleka w/ max_iter=0
+-----------------------------------
+Instance: neos-4647032-veleka max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4647032-veleka.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: neos-4647032-veleka w/ max_iter=inf
+-----------------------------------
+Instance: neos-4647032-veleka max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4647032-veleka.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+LP to standard form done
+Solving the instance: z26 w/ max_iter=0
+-----------------------------------
+Instance: z26 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/z26.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: z26 w/ max_iter=inf
+-----------------------------------
+Instance: z26 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/z26.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-5118851-kowhai w/ max_iter=0
+-----------------------------------
+Instance: neos-5118851-kowhai max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5118851-kowhai.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-5118851-kowhai w/ max_iter=inf
+-----------------------------------
+Instance: neos-5118851-kowhai max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5118851-kowhai.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-4972437-bojana w/ max_iter=0
+-----------------------------------
+Instance: neos-4972437-bojana max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4972437-bojana.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: neos-4972437-bojana w/ max_iter=inf
+-----------------------------------
+Instance: neos-4972437-bojana max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-4972437-bojana.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: hgms62 w/ max_iter=0
+-----------------------------------
+Instance: hgms62 max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/hgms62.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: hgms62 w/ max_iter=inf
+-----------------------------------
+Instance: hgms62 max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/hgms62.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: in w/ max_iter=0
+-----------------------------------
+Instance: in max_iter: 0
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/in.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: in w/ max_iter=inf
+-----------------------------------
+Instance: in max_iter: 1000
+Trying to read instance from /nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/in.mps.gz
+Instance read successfully
+Initial iteration of the blackbox PDLP algorithm
+LP to standard form...
+Solving the instance: zeil w/ max_iter=0
+Solving the instance: zeil w/ max_iter=inf

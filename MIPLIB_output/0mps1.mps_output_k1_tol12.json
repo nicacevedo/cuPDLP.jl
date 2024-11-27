@@ -1,0 +1,43 @@
+{
+    "relative_l_inf_primal_residual": [
+        7.04089434174064e-6,
+        1.937843824800273e-15
+    ],
+    "instance": "./MIPLIB/0mps1.mps",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        66.00036986236344,
+        66.00000000204919
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        1.4757098952046041e-5,
+        1.228835374249412e-10
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        66.00010030131338,
+        65.99999999999989
+    ],
+    "l_inf_primal_residual": [
+        7.744983775914704e-5,
+        2.1316282072803006e-14
+    ],
+    "relative_optimality_gap": [
+        2.0267676477323293e-6,
+        1.5408306209650845e-11
+    ],
+    "total_time": 0.8250000476837158,
+    "l_inf_dual_residual": [
+        0.00014757098952046041,
+        1.228835374249412e-9
+    ],
+    "blackbox_time": [
+        0.26600003242492676,
+        0.5590000152587891
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

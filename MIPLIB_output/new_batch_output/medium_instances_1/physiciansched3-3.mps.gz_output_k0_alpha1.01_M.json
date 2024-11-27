@@ -1,0 +1,44 @@
+{
+    "relative_l_inf_primal_residual": [
+        0.0003856807771954027
+    ],
+    "instance": "/nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/physiciansched3-3.mps.gz",
+    "time_sec_limit": 600,
+    "dual_objective": [
+        5.625107129281336e7
+    ],
+    "max_iter": 0.0,
+    "relative_l_inf_dual_residual": [
+        6.40633066458519
+    ],
+    "objective_tol": 1.0e-8,
+    "termination_reason": [
+        "TERMINATION_REASON_TIME_LIMIT"
+    ],
+    "D2_condition_number": [
+        1.0
+    ],
+    "alpha": 1.1,
+    "initial_tol": 1.0e-8,
+    "primal_objective": [
+        2.4637083831951884e6
+    ],
+    "l_inf_primal_residual": [
+        2.3121562592864393
+    ],
+    "relative_optimality_gap": [
+        0.9160787503647481
+    ],
+    "D1_condition_number": [
+        1.0
+    ],
+    "last_iteration": 0,
+    "total_time": 602.9961919784546,
+    "l_inf_dual_residual": [
+        12.81266132917038
+    ],
+    "blackbox_time": [
+        602.8878128528595
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

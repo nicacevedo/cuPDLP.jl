@@ -1,1 +1,43 @@
-{"relative_l_inf_primal_residual":[0.002199717341398899,8.896863246121711e-10],"instance":"./MIPLIB/ex1010-pi.mps.gz","final iteration":1,"time_sec_limit":600,"dual_objective":[220.27225386191026,220.67008703767166],"max_iter":5,"relative_l_inf_dual_residual":[0.0007639961851875199,8.038842676380206e-12],"objective_tol":1.0e-8,"max_time":600,"initial_tol":0.001,"primal_objective":[220.70643873562855,220.670087045147],"l_inf_primal_residual":[0.004399434682797798,1.7793726492243422e-9],"relative_optimality_gap":[0.0009823660755376243,1.689951838839335e-11],"total_time":168.6710000038147,"l_inf_dual_residual":[0.0015279923703750398,1.6077685352760412e-11],"blackbox_time":[2.057000160217285,166.54999995231628],"candidate_type":"POINT_TYPE_AVERAGE_ITERATE"}
+{
+    "relative_l_inf_primal_residual": [
+        0.002199717341398899,
+        8.896863246121711e-10
+    ],
+    "instance": "./MIPLIB/ex1010-pi.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        220.27225386191026,
+        220.67008703767166
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        0.0007639961851875199,
+        8.038842676380206e-12
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        220.70643873562855,
+        220.670087045147
+    ],
+    "l_inf_primal_residual": [
+        0.004399434682797798,
+        1.7793726492243422e-9
+    ],
+    "relative_optimality_gap": [
+        0.0009823660755376243,
+        1.689951838839335e-11
+    ],
+    "total_time": 168.6710000038147,
+    "l_inf_dual_residual": [
+        0.0015279923703750398,
+        1.6077685352760412e-11
+    ],
+    "blackbox_time": [
+        2.057000160217285,
+        166.54999995231628
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

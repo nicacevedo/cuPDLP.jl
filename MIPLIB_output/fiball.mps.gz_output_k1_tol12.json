@@ -1,1 +1,43 @@
-{"relative_l_inf_primal_residual":[0.003122327543053416,7.815970093361102e-12],"instance":"./MIPLIB/fiball.mps.gz","final iteration":1,"time_sec_limit":600,"dual_objective":[137.0238175493861,137.0691676735878],"max_iter":5,"relative_l_inf_dual_residual":[5.336600779948242e-6,1.05432329533528e-12],"objective_tol":1.0e-8,"max_time":600,"initial_tol":0.001,"primal_objective":[137.06738783030642,137.0691676436073],"l_inf_primal_residual":[0.006244655086106832,1.5631940186722204e-11],"relative_optimality_gap":[0.00015838485588868216,1.0896517945982079e-10],"total_time":34.509000062942505,"l_inf_dual_residual":[1.0673201559896484e-5,2.10864659067056e-12],"blackbox_time":[3.365000009536743,31.08899998664856],"candidate_type":"POINT_TYPE_AVERAGE_ITERATE"}
+{
+    "relative_l_inf_primal_residual": [
+        0.003122327543053416,
+        7.815970093361102e-12
+    ],
+    "instance": "./MIPLIB/fiball.mps.gz",
+    "final iteration": 1,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        137.0238175493861,
+        137.0691676735878
+    ],
+    "max_iter": 5,
+    "relative_l_inf_dual_residual": [
+        5.336600779948242e-6,
+        1.05432329533528e-12
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        137.06738783030642,
+        137.0691676436073
+    ],
+    "l_inf_primal_residual": [
+        0.006244655086106832,
+        1.5631940186722204e-11
+    ],
+    "relative_optimality_gap": [
+        0.00015838485588868216,
+        1.0896517945982079e-10
+    ],
+    "total_time": 34.509000062942505,
+    "l_inf_dual_residual": [
+        1.0673201559896484e-5,
+        2.10864659067056e-12
+    ],
+    "blackbox_time": [
+        3.365000009536743,
+        31.08899998664856
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

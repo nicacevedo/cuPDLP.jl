@@ -1,1 +1,35 @@
-{"relative_l_inf_primal_residual":[3.271557021798531e-10],"instance":"./MIPLIB/rmatr200-p10.mps.gz","final iteration":0,"time_sec_limit":600,"dual_objective":[1550.6207462768189],"max_iter":0,"relative_l_inf_dual_residual":[3.6666167467631604e-11],"objective_tol":1.0e-8,"max_time":600,"initial_tol":1.0e-8,"primal_objective":[1550.6207713151082],"l_inf_primal_residual":[6.248673911635194e-8],"relative_optimality_gap":[8.071031601111711e-9],"total_time":128.67000007629395,"l_inf_dual_residual":[8.891545610900664e-8],"blackbox_time":[128.54700016975403],"candidate_type":"POINT_TYPE_AVERAGE_ITERATE"}
+{
+    "relative_l_inf_primal_residual": [
+        3.271557021798531e-10
+    ],
+    "instance": "./MIPLIB/rmatr200-p10.mps.gz",
+    "final iteration": 0,
+    "time_sec_limit": 600,
+    "dual_objective": [
+        1550.6207462768189
+    ],
+    "max_iter": 0,
+    "relative_l_inf_dual_residual": [
+        3.6666167467631604e-11
+    ],
+    "objective_tol": 1.0e-8,
+    "max_time": 600,
+    "initial_tol": 1.0e-8,
+    "primal_objective": [
+        1550.6207713151082
+    ],
+    "l_inf_primal_residual": [
+        6.248673911635194e-8
+    ],
+    "relative_optimality_gap": [
+        8.071031601111711e-9
+    ],
+    "total_time": 57.58299994468689,
+    "l_inf_dual_residual": [
+        8.891545610900664e-8
+    ],
+    "blackbox_time": [
+        57.472999811172485
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}
