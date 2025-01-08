@@ -1,0 +1,44 @@
+{
+    "relative_l_inf_primal_residual": [
+        9.347299230929214e-10
+    ],
+    "instance": "/nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/neos-5193246-nerang.mps.gz",
+    "time_sec_limit": 600,
+    "dual_objective": [
+        -9.1672435945376e-9
+    ],
+    "max_iter": 0.0,
+    "relative_l_inf_dual_residual": [
+        4.915558509195204e-13
+    ],
+    "objective_tol": 1.0e-8,
+    "termination_reason": [
+        "TERMINATION_REASON_OPTIMAL"
+    ],
+    "D2_condition_number": [
+        1.0
+    ],
+    "alpha": 1.1,
+    "initial_tol": 1.0e-8,
+    "primal_objective": [
+        0.0
+    ],
+    "l_inf_primal_residual": [
+        1.1216759077115057e-8
+    ],
+    "relative_optimality_gap": [
+        9.167243510499247e-9
+    ],
+    "D1_condition_number": [
+        1.0
+    ],
+    "last_iteration": 0,
+    "total_time": 1.0946760177612305,
+    "l_inf_dual_residual": [
+        9.831117018390408e-13
+    ],
+    "blackbox_time": [
+        0.8345088958740234
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

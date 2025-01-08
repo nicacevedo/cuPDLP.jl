@@ -1,0 +1,44 @@
+{
+    "relative_l_inf_primal_residual": [
+        9.998113448261847e-13
+    ],
+    "instance": "instance/house_k5_d1.0e-11.mps",
+    "time_sec_limit": 600,
+    "iterative_tol": 1.0e-8,
+    "dual_objective": [
+        -4.999999999999976
+    ],
+    "max_iter": 0.0,
+    "relative_l_inf_dual_residual": [
+        0.0
+    ],
+    "objective_tol": 1.0e-8,
+    "termination_reason": [
+        "TERMINATION_REASON_OPTIMAL"
+    ],
+    "D2_condition_number": [
+        1.0
+    ],
+    "alpha": 1.1,
+    "primal_objective": [
+        -4.999999999990002
+    ],
+    "l_inf_primal_residual": [
+        1.9996226896523694e-12
+    ],
+    "relative_optimality_gap": [
+        9.06749423021954e-13
+    ],
+    "D1_condition_number": [
+        1.0
+    ],
+    "last_iteration": 0,
+    "total_time": 0.019665956497192383,
+    "l_inf_dual_residual": [
+        0.0
+    ],
+    "blackbox_time": [
+        0.01793193817138672
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

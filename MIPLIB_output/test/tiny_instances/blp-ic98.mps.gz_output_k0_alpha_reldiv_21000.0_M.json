@@ -1,0 +1,44 @@
+{
+    "relative_l_inf_primal_residual": [
+        3.7718315581969364e-8
+    ],
+    "instance": "/nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/blp-ic98.mps.gz",
+    "time_sec_limit": 600,
+    "dual_objective": [
+        4331.168350211394
+    ],
+    "max_iter": 0.0,
+    "relative_l_inf_dual_residual": [
+        2.2263473358052104e-10
+    ],
+    "objective_tol": 1.0e-8,
+    "termination_reason": [
+        "TERMINATION_REASON_OPTIMAL"
+    ],
+    "D2_condition_number": [
+        1.0
+    ],
+    "alpha": 1.1,
+    "initial_tol": 1.0e-8,
+    "primal_objective": [
+        4331.168352640276
+    ],
+    "l_inf_primal_residual": [
+        7.543663116393873e-8
+    ],
+    "relative_optimality_gap": [
+        2.803633382782006e-10
+    ],
+    "D1_condition_number": [
+        1.0
+    ],
+    "last_iteration": 0,
+    "total_time": 46.992117166519165,
+    "l_inf_dual_residual": [
+        4.452694671610421e-10
+    ],
+    "blackbox_time": [
+        46.82153606414795
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

@@ -1,0 +1,66 @@
+{
+    "relative_l_inf_primal_residual": [
+        0.006041510634753777,
+        5.12949734599033e-6,
+        4.924949337237194e-13
+    ],
+    "instance": "/nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/blp-ic98.mps.gz",
+    "time_sec_limit": 600,
+    "iterative_tol": 0.001,
+    "dual_objective": [
+        4330.209434822947,
+        4331.168346828688,
+        4331.1683525978915
+    ],
+    "max_iter": 1000.0,
+    "relative_l_inf_dual_residual": [
+        0.00011675020512435288,
+        1.037068514126837e-9,
+        7.570441365132666e-14
+    ],
+    "objective_tol": 1.0e-8,
+    "termination_reason": [
+        "TERMINATION_REASON_OPTIMAL",
+        "TERMINATION_REASON_OPTIMAL",
+        "TERMINATION_REASON_OPTIMAL"
+    ],
+    "D2_condition_number": [
+        1.0,
+        5.791852438643596,
+        579.1852438643596
+    ],
+    "alpha": 100.0,
+    "primal_objective": [
+        4331.197619891806,
+        4331.1683794326045,
+        4331.168352598079
+    ],
+    "l_inf_primal_residual": [
+        0.012083021269507555,
+        1.025899469198066e-5,
+        9.849898674474389e-13
+    ],
+    "relative_optimality_gap": [
+        0.00011407742243213723,
+        3.763436335769267e-9,
+        2.162629884312976e-14
+    ],
+    "D1_condition_number": [
+        1.0,
+        82.7607580666582,
+        8276.07580666582
+    ],
+    "last_iteration": 2,
+    "total_time": 49.81470012664795,
+    "l_inf_dual_residual": [
+        0.00023350041024870576,
+        2.074137028253674e-9,
+        1.5140882730265331e-13
+    ],
+    "blackbox_time": [
+        4.935464143753052,
+        14.766590118408203,
+        30.099569082260132
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}

@@ -1,0 +1,77 @@
+{
+    "relative_l_inf_primal_residual": [
+        0.0004957565691464916,
+        1.1151767640522838e-13,
+        2.4590616287097777e-17,
+        2.4590616287097777e-17
+    ],
+    "instance": "/nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/ger50-17-trans-dfn-3t.mps.gz",
+    "time_sec_limit": 600,
+    "dual_objective": [
+        4705.512491078321,
+        3453.475236820745,
+        3453.4774974034926,
+        3453.4774974034926
+    ],
+    "max_iter": 1000.0,
+    "relative_l_inf_dual_residual": [
+        0.00012595312635285642,
+        2.0646852917858295e-7,
+        3.4317040348331522e-9,
+        3.4317040348331522e-9
+    ],
+    "objective_tol": 1.0e-8,
+    "termination_reason": [
+        "TERMINATION_REASON_OPTIMAL",
+        "TERMINATION_REASON_OPTIMAL",
+        "TERMINATION_REASON_TIME_LIMIT",
+        "TERMINATION_REASON_TIME_LIMIT"
+    ],
+    "D2_condition_number": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+    ],
+    "alpha": 1.0,
+    "initial_tol": 0.001,
+    "primal_objective": [
+        4709.0873280288715,
+        3453.4752445878207,
+        3453.4752446872226,
+        3453.4752446872226
+    ],
+    "l_inf_primal_residual": [
+        586.7447553082238,
+        1.3198496162658557e-7,
+        2.910383045673398e-11,
+        2.910383045673398e-11
+    ],
+    "relative_optimality_gap": [
+        0.0003796717170685641,
+        1.1243675934124593e-9,
+        3.261047598550981e-7,
+        3.261047598550981e-7
+    ],
+    "D1_condition_number": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+    ],
+    "last_iteration": 3,
+    "total_time": 601.5634670257568,
+    "l_inf_dual_residual": [
+        0.004627517862203945,
+        7.585653762021138e-6,
+        1.2608080623977003e-7,
+        1.2608080623977003e-7
+    ],
+    "blackbox_time": [
+        1.7062969207763672,
+        197.56734800338745,
+        400.2328751087189,
+        0.8298790454864502
+    ],
+    "candidate_type": "POINT_TYPE_AVERAGE_ITERATE"
+}
