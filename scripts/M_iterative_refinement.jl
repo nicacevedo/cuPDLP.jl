@@ -9,7 +9,11 @@ import cuPDLP
 # import Formatting
 using LinearAlgebra
 using SparseArrays
+using Statistics 
+
 using CUDA
+
+
 
 function write_vector_to_file(filename, vector)
     open(filename, "w") do io
@@ -301,17 +305,18 @@ end
 
 function iterative_refinement(
     instance_path::String,
-    initial_tol = 1e-3,
+    iterative_tol = 1e-3,
     objective_tol=1e-8,
     time_sec_limit=300,
     max_iter =100,
     alpha=1.1,
+    bound=1e3
 )
 
     # Output metrics
     out = Dict(
         "instance" => instance_path,
-        "initial_tol" => initial_tol,
+        "iterative_tol" => iterative_tol,
         "objective_tol" => objective_tol,
         "candidate_type" => cuPDLP.POINT_TYPE_AVERAGE_ITERATE,
         "termination_reason" => cuPDLP.TerminationReason[],
@@ -345,7 +350,7 @@ function iterative_refinement(
     t_start_k = time()
     params, lp_0_stand, output = call_pdlp(
         lp_0,
-        initial_tol,
+        iterative_tol,
         time_sec_limit
     )
     lp = lp_0_stand
@@ -377,13 +382,18 @@ function iterative_refinement(
     optimal_primal_cost = sum(c.*x_k)
     optimal_dual_cost = sum(b.*y_k)
 
+    # KKT relative error de-normalizer [...*(1+norm(param))]
+    c_kkt = c
+    b_kkt = b
+    l_kkt = l 
+    u_kkt = u
 
     # Initial parameters
     Delta_1 = ones(length(b)) 
     Delta_2 = ones(length(c)) 
     # Delta_P_lu = ones(size(l))
     # Delta_2 = ones(size(c))
-    # alpha = 1.1# + initial_tol # (Think about this alpha > 1)
+    # alpha = 1.1# + iterative_tol # (Think about this alpha > 1)
 
 
     # Calculate the KKT error of the problem
@@ -454,29 +464,61 @@ function iterative_refinement(
         A_bar = A .- 0.0
 
         # Get a vector of the maximums of the form max(abs(b_bar_i), l_bar_i, -u_bar_i)
-        delta_1 = abs.(b_bar) # Ignore for now
-        # delta_P_lu = max.(
-        #     zeros(size(l_bar)),
-        #     l_bar,
-        #     -u_bar
-        # ) # It can be also splitted in two vectors for each bound.
-        # println("delta_1: ", delta_1)
-        # println("delta_P_lu: ", delta_P_lu)  
+        # println("min b_bar: ", abs(minimum(b_bar))^2)
+        # println("max b_bar: ", abs(maximum(b_bar))^2)
+        # # println("max b_bar: ", maximum(b_bar))
+        # println("min Ax: ", minimum(A*x_k))
+        # println("max Ax: ", maximum(A*x_k))
+        # println("min b: ", minimum(b))
+        # println("max b: ", maximum(b))
         
 
+        delta_1 = abs.(b_bar) # Ignore for now
+        println("max delta_1: ", maximum(delta_1))
+        # simple correction
+        # delta_1 = delta_1 / iterative_tol ^ (k+1)
+        # # median correction
+        # # println("median: ", median(delta_1[delta_1.>0]))
+        # # delta_1 = delta_1 / median(delta_1[delta_1.>0])
+        # # relative error correction
+        # # delta_1 = delta_1 .* (1 + sqrt(b_kkt'*b_kkt))
+        # println("max delta_1 post: ", maximum(delta_1))
+
+
+
+
         # CONTINUE FROM HERE
-        c_bar_plus = Vector{Float64}(c_bar)
-        c_bar_plus[x_k .<= (l + u) / 2] .= -Inf
-        c_bar_minus = Vector{Float64}(c_bar)
-        c_bar_minus[x_k .> (l + u) / 2] .= Inf
+        c_bar_plus = Vector{Float64}(c_bar) # original
+        # relative error correction
+        # c_bar_plus = Vector{Float64}(c_bar) .* (1 + sqrt(c_kkt'*c_kkt)) # rel. correction
+        c_bar_plus[x_k .<= (l + u) / 2] .= -Inf # original
+        c_bar_minus = Vector{Float64}(c_bar) # original
+        # relative error correction
+        # c_bar_minus = Vector{Float64}(c_bar) .* (1 + sqrt(c_kkt'*c_kkt))
+        c_bar_minus[x_k .> (l + u) / 2] .= Inf # original
+        # println("c_bar_plus: ", c_bar_plus)
+        # println("c_bar_minus: ", c_bar_minus)
+        # println("l_bar rel: ", )
+        # l_finite = l_kkt[l_kkt .> -Inf]
+        # u_finite = u_kkt[u_kkt .< Inf]
         delta_2 = max.(
-            zeros(size(c_bar)),
+            zeros(size(c_bar)), # almost zero
             l_bar,
+            # l_bar .* (1 + sqrt(l_finite'*l_finite)), # rel. correction (mine)
             -u_bar,
+            # -u_bar .* (1 + sqrt(u_finite'*u_finite)), # rel. correction (mine)
             c_bar_plus,
             -c_bar_minus
-        )       
-        # println("delta_2: ", delta_2)
+        )   
+        println("max delta_2: ", maximum(delta_2))   
+        # simple correction
+        # delta_2 = delta_2 / iterative_tol ^ (k+1)
+        # # median correction
+        # # println("median: ", median(delta_2[delta_2.>0]))
+        # # delta_2 = delta_2 / median(delta_2[delta_2.>0])
+        # println("max delta_2 post: ", maximum(delta_2))
+        # # relative error correction
+
 
         # Check the optimality condition for objective tolerance
         # (old from IR) if delta_P <= objective_tol && delta_2 <= objective_tol && delta_S <= objective_tol || k >= max_iter || remaining_time <= 0
@@ -493,16 +535,17 @@ function iterative_refinement(
         end
 
         # Compute the scaling factors
-        Delta_1 = 1 ./ max.(delta_1, 1 ./ (alpha * Delta_1))
-        # println("Delta_1: ", Delta_1) # Ignore for now
-        # Delta_P_lu = 1 ./ max.(delta_P_lu, 1 ./ (alpha * Delta_P_lu))
-        # println("Delta_2: ", Delta_2)
-        Delta_2 = 1 ./ max.(delta_2, 1 ./ (alpha * Delta_2))
-        # println("Delta_2: ", Delta_2)
+        # Delta_1 = 1 ./ max.(delta_1, 1 ./ (alpha * Delta_1))
+        # Delta_2 = 1 ./ max.(delta_2, 1 ./ (alpha * Delta_2))
+        # Bounds on the value of delta (lower and upper)
+        Delta_1 = min.(max.(1/alpha, 1 ./ delta_1), alpha)
+        Delta_2 = min.(max.(1/alpha, 1 ./ delta_2), alpha)
+
         # Build the new LP
         D_1 = sparse(LinearAlgebra.I, length(Delta_1),length(Delta_1)).-0.0
         D_1[diagind(D_1)] = Delta_1
         # Print diagonal elements of D_1 which are different from 1.1
+        println("D_1 lambda_min: ", minimum(D_1[diagind(D_1)]))
         println("D_1 lambda_max: ", maximum(D_1[diagind(D_1)]))
         # M_Delta_P_LU = sparse(LinearAlgebra.I, length(Delta_P_lu),length(Delta_P_lu)).-0.0
         # M_Delta_P_LU[diagind(M_Delta_P_LU)] = Delta_P_lu
@@ -511,6 +554,7 @@ function iterative_refinement(
         D_2_inv = sparse(LinearAlgebra.I, length(Delta_2),length(Delta_2)).-0.0
         D_2[diagind(D_2)] = Delta_2
         D_2_inv[diagind(D_2_inv)] = 1 ./ Delta_2
+        println("D_2 lambda_min: ", minimum(D_2[diagind(D_2)]))
         println("D_2 lambda_max: ", maximum(D_2[diagind(D_2)]))
 
         b_bar = D_1 * b_bar  # Ignore for now
@@ -542,10 +586,16 @@ function iterative_refinement(
         t_start_k = time()
         params, lp, output = call_pdlp(
             lp,
-            objective_tol,
+            iterative_tol,
             remaining_time
         )
         t_pdlp_k = time() - t_start_k
+
+        # KKT de-normalizer update
+        b_kkt = copy(b_bar)
+        c_kkt = copy(c_bar)
+        l_kkt = copy(l_bar)
+        u_kkt = copy(u_bar)
 
         # Retrieve the solution to the original problem
         x_k =  x_k + D_2 * output.primal_solution
@@ -628,7 +678,7 @@ function main()
     # instance_dir = "./MIPLIB/"
     instance_dir = "/nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/"
     # instance_path = instance_dir * instance_name 
-    output_dir = "./MIPLIB_output/test/"
+    output_dir = "./MIPLIB_output/test2"
     tol_it_ref = 1e-3
     tol_objective = 1e-8
     time_sec_limit = 600 # 10 mins per instance
@@ -636,53 +686,53 @@ function main()
     # Read all the files in the instance directory
     # instance_files = readdir(instance_dir)
 
-    alphas = [1e3]#[1+1e-3,1+1e-2, 1+1e-1,1.5]
+    alphas = [1.1,1e1,1e2]#[1e3, 1e4, 1e5]#[1+1e-3,1+1e-2, 1+1e-1,1.5]
 
     # Instances
     instances = Dict(
-    #     "tiny_instance"=>String[
-    #         'ns1456591', 'app1-2', 'graph20-80-1rand', 'blp-ic98', 'piperout-d20', 'ns1828997', 
-    #         'neos-4292145-piako', 'neos-960392', 'd20200', 'mushroom-best', 'bppc6-02', 'neos-1354092', 
-    #         'neos-933638', 'neos-4300652-rahue', 'n2seq36q', 'bppc6-06', 'neos-933966', 'ns1430538', 
-    #         'neos-5195221-niemur', 'neos-5193246-nerang', 'germanrr', 'ger50-17-trans-dfn-3t', 
-    #         'ger50-17-trans-pop-3t', 'neos-5196530-nuhaka', 'neos-5266653-tugela', 'stockholm', 'neos-953928', 
-    #         'dws008-03', 'neos-1122047', 'eva1aprime6x6opt', 'supportcase23', 'cmflsp50-24-8-8', 'sorrell7', 
-    #         'physiciansched5-3', 'bab5', 'pb-grow22', 'gmut-76-40', 'opm2-z8-s0', 'neos-913984', 'mzzv42z', 
-    #         'neos-498623', 'sct5', 'ns930473', 'iis-hc-cov', 'neos-4954274-beardy', 'neos-824661', 'reblock420',
-    #          'supportcase37', 'chromaticindex512-7', 'fhnw-binschedule2', 'mzzv11', 'neos-5013590-toitoi', 
-    #          'neos-5188808-nattai', 'brazil3', 't1722', 'dws012-01', 'neos-1171448', 'leo1', 'ci-s4', 'neos-826224',
-    #           'cmflsp40-24-10-7', 'unitcal_7', 'neos-4359986-taipa', 'satellites2-60-fs', 'shipsched', 
-    #           'fhnw-schedule-paira200', 'blp-ic97', 'neos-4805882-barwon', 'ns1631475', 'neos-3372571-onahau',
-    #            'neos-1593097', 'rmatr200-p5', 'neos-827175', '30n20b8', 'sct32', 'neos-932721', 
-    #            'lr1dr04vc05v17a-t360', 'ns1856153', 'sct1', 'rmatr200-p10', '2club200v15p5scn', 'fiball',
-    #             'supportcase40', 'neos-950242', 'v150d30-2hopcds', 'momentum1', 'ex1010-pi', 'neos-578379', 'neos-738098', 'ns1830653']
-    #     ]
+        "tiny_instances"=>String[ # "app1-2",
+            "ns1456591",  "graph20-80-1rand", "blp-ic98", "piperout-d20", "ns1828997", 
+            "neos-4292145-piako", "neos-960392", "d20200", "mushroom-best", "bppc6-02", "neos-1354092", 
+            "neos-933638", "neos-4300652-rahue", "n2seq36q", "bppc6-06", "neos-933966", "ns1430538", 
+            "neos-5195221-niemur", "neos-5193246-nerang", "germanrr", "ger50-17-trans-dfn-3t", 
+            "ger50-17-trans-pop-3t", "neos-5196530-nuhaka", "neos-5266653-tugela", "stockholm", "neos-953928", 
+            "dws008-03", "neos-1122047", "eva1aprime6x6opt", "supportcase23", "cmflsp50-24-8-8", "sorrell7", 
+            "physiciansched5-3", "bab5", "pb-grow22", "gmut-76-40", "opm2-z8-s0", "neos-913984", "mzzv42z", 
+            "neos-498623", "sct5", "ns930473", "iis-hc-cov", "neos-4954274-beardy", "neos-824661", "reblock420",
+             "supportcase37", "chromaticindex512-7", "fhnw-binschedule2", "mzzv11", "neos-5013590-toitoi", 
+             "neos-5188808-nattai", "brazil3", "t1722", "dws012-01", "neos-1171448", "leo1", "ci-s4", "neos-826224",
+              "cmflsp40-24-10-7", "unitcal_7", "neos-4359986-taipa", "satellites2-60-fs", "shipsched", 
+              "fhnw-schedule-paira200", "blp-ic97", "neos-4805882-barwon", "ns1631475", "neos-3372571-onahau",
+               "neos-1593097", "rmatr200-p5", "neos-827175", "30n20b8", "sct32", "neos-932721", 
+               "lr1dr04vc05v17a-t360", "ns1856153", "sct1", "rmatr200-p10", "2club200v15p5scn", "fiball",
+                "supportcase40", "neos-950242", "v150d30-2hopcds", "momentum1", "ex1010-pi", "neos-578379", "neos-738098", "ns1830653"
+            ],
         # "small_instances"=>String[
-        #     # "30n20b8", "hgms30", "var-smallemery-m6j6", "nursesched-medium-hint03", 
-        #     # "neos-2629914-sudost",
-        #     # "neos-4966258-blicks", "neos-3755335-nizao", "neos-3695882-vesdre", "neos6",
-        #     # "cmflsp40-24-10-7", 
-        #     # "triptim7", "neos-2746589-doon", "reblock420",
-        #     # "neos-872648", "neos-4760493-puerua", 
-        #     # "fhnw-schedule-pairb200", "sct1",
-        #     # "t1717", "iis-hc-cov", 
-        #     # "gmut-75-50", 
-        #     # "t1722", "ex1010-pi",
-        #     # "neos-5221106-oparau", "neos-1354092", "neos-827175",
-        #     #  "radiationm40-10-02",
+        #     "30n20b8", "hgms30", "var-smallemery-m6j6", "nursesched-medium-hint03", 
+        #     "neos-2629914-sudost",
+        #     "neos-4966258-blicks", "neos-3755335-nizao", "neos-3695882-vesdre", "neos6",
+        #     "cmflsp40-24-10-7", 
+        #     "triptim7", "neos-2746589-doon", "reblock420",
+        #     "neos-872648", "neos-4760493-puerua", 
+        #     "fhnw-schedule-pairb200", "sct1",
+        #     "t1717", "iis-hc-cov", 
+        #     "gmut-75-50", 
+        #     "t1722", "ex1010-pi",
+        #     "neos-5221106-oparau", "neos-1354092", "neos-827175",
+        #      "radiationm40-10-02",
         #     "nw04", "neos-4359986-taipa", "neos-960392", "map18", "neos-932721",
         #     "gmut-76-40",
         # ],
-        "medium_instances"=>String[
-            "ds-big", "neos-4647030-tutaki", "neos-5129192-manaia", "graph40-80-1rand",
-            "neos-5049753-cuanza", "seqsolve1", "neos-5102383-irwell", "bab6",
-            "neos-5123665-limmat", "shs1014", "shs1042", "wnq-n100-mw99-14",
-            "fhnw-binschedule0", "fhnw-binschedule1", "neos-4321076-ruwer",
-            "physiciansched3-3", "neos-5079731-flyers", "neos-3322547-alsek",
-            "neos-4647027-thurso", "ns1644855", "datt256", "kosova1",
-            "neos-4533806-waima", "neos-4647032-veleka", "z26", "neos-5118851-kowhai",
-            "neos-4972437-bojana", "hgms62", "in", "zeil",
-        ]
+        # "medium_instances"=>String[
+        #     "ds-big", "neos-4647030-tutaki", "neos-5129192-manaia", "graph40-80-1rand",
+        #     "neos-5049753-cuanza", "seqsolve1", "neos-5102383-irwell", "bab6",
+        #     "neos-5123665-limmat", "shs1014", "shs1042", "wnq-n100-mw99-14",
+        #     "fhnw-binschedule0", "fhnw-binschedule1", "neos-4321076-ruwer",
+        #     "physiciansched3-3", "neos-5079731-flyers", "neos-3322547-alsek",
+        #     "neos-4647027-thurso", "ns1644855", "datt256", "kosova1",
+        #     "neos-4533806-waima", "neos-4647032-veleka", "z26", "neos-5118851-kowhai",
+        #     "neos-4972437-bojana", "hgms62", "in", "zeil",
+        # ]
     )
     
 
@@ -693,22 +743,22 @@ function main()
             instance_name=instance_name*".mps.gz"
             for alpha in alphas
                 for max_iter_limit in [0,max_iter_limit]
-                    println("alhpa/max_iter",alpha, max_iter_limit)
+                    println("alhpa/max_iter: ", (alpha, max_iter_limit))
                     
                     println("-----------------------------------")
                     println("Instance: ", instance_name, " max_iter_limit: ", max_iter_limit)
                     instance_path = instance_dir * instance_name
                     if max_iter_limit > 0
                         output = iterative_refinement(instance_path, tol_it_ref, tol_objective, time_sec_limit, max_iter_limit, alpha)
-                    # elseif alpha == alphas[1] # Baseline
-                    #     output = iterative_refinement(instance_path, tol_objective, tol_objective, time_sec_limit, max_iter_limit)
+                    elseif alpha == alphas[1] # Baseline
+                        output = iterative_refinement(instance_path, tol_objective, tol_objective, time_sec_limit, max_iter_limit)
                     else
                         continue
                     end
                     println(output)
 
                     # Save the output in .json format
-                    output_path = output_dir * "/" * instance_size * "/" *  instance_name * "_output_k"*string(output["last_iteration"])*"_alpha"*string(alpha)*"_M.json"
+                    output_path = output_dir * "/" * instance_size * "/" *  instance_name * "_output_k"*string(output["last_iteration"])*"_alpha_"*string(alpha)*"_nocorrection.json"
                     open(output_path, "w") do io
                         write(io, JSON3.write(output, allow_inf = true))
                     end
@@ -717,3 +767,5 @@ function main()
         end
     end
 end
+
+main()

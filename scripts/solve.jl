@@ -64,7 +64,7 @@ function solve_instance_and_output(
         GZip.open(full_log_output_path, "w") do io
             write(io, JSON3.write(log, allow_inf = true))
         end
-    
+
         primal_output_path = joinpath(output_dir, instance_name * "_primal.txt")
         write_vector_to_file(primal_output_path, output.primal_solution)
     
@@ -124,12 +124,14 @@ function parse_command_line()
         "--instance_path"
         help = "The path to the instance to solve in .mps.gz or .mps format."
         arg_type = String
-        required = true
+        # required = true
+        default = "instance/house_k0.01_d0.0001.mps"
 
         "--output_directory"
         help = "The directory for output files."
         arg_type = String
-        required = true
+        # required = true
+        default = "output/PDHG"
 
         "--tolerance"
         help = "KKT tolerance of the solution."
@@ -146,13 +148,13 @@ function parse_command_line()
 end
 
 
-function main()
-    parsed_args = parse_command_line()
-    instance_path = parsed_args["instance_path"]
+function main(instance_path,output_directory,tolerance, time_sec_limit)
+    # parsed_args = parse_command_line()
+    # instance_path = parsed_args["instance_path"]
     println("Instance path: ", instance_path)
-    tolerance = parsed_args["tolerance"]
-    time_sec_limit = parsed_args["time_sec_limit"]
-    output_directory = parsed_args["output_directory"]
+    # tolerance = parsed_args["tolerance"]
+    # time_sec_limit = parsed_args["time_sec_limit"]
+    # output_directory = parsed_args["output_directory"]
 
     println("Trying to read instance from ", instance_path)
     lp = cuPDLP.qps_reader_to_standard_form(instance_path)
@@ -192,7 +194,7 @@ function main()
         true,
         2,
         true,
-        64,
+        1,
         termination_params,
         restart_params,
         cuPDLP.AdaptiveStepsizeParams(0.3,0.6),  
@@ -206,4 +208,4 @@ function main()
 
 end
 
-main()
+# main()
