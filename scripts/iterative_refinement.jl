@@ -14,6 +14,7 @@ using Statistics
 
 using CUDA
 
+@enum OptimalityNorm L_INF L2 # Mine
 
 
 function write_vector_to_file(filename, vector)
@@ -268,11 +269,11 @@ function call_pdlp(lp, tolerance, time_sec_limit, save_log::Bool, out_dict::Dict
     )
 
     termination_params = cuPDLP.construct_termination_criteria(
-        # optimality_norm = L2,
-        eps_optimal_absolute = tolerance,
-        eps_optimal_relative = tolerance,
-        eps_primal_infeasible = 1e-8,
-        eps_dual_infeasible = 1e-8,
+        optimality_norm = cuPDLP.L_INF, # L2 , L_INF
+        eps_optimal_absolute = tolerance,#1e-6,
+        eps_optimal_relative = tolerance,#1e-6,
+        eps_primal_infeasible = 1e-8, # This is not primal infeasibility tolerance
+        eps_dual_infeasible = 1e-8, # This is not dual infeasibility tolerance
         time_sec_limit = time_sec_limit,
         iteration_limit = typemax(Int32),
         kkt_matrix_pass_limit = Inf,
@@ -326,6 +327,10 @@ function call_pdlp(lp, tolerance, time_sec_limit, save_log::Bool, out_dict::Dict
         log.solution_stats = output.iteration_stats[end]
         log.solution_type = cuPDLP.POINT_TYPE_AVERAGE_ITERATE
 
+        print("Saving log from call_pdlp...")
+
+        instance_name = replace(instance_name, ".mps" => "")
+
         # println(instance_name * "_k" * string(current_iter_k) * "_summary.json")
         summary_output_path = joinpath(output_dir, instance_name * "_k" * string(current_iter_k) * "_summary.json")
         open(summary_output_path, "w") do io
@@ -344,6 +349,8 @@ function call_pdlp(lp, tolerance, time_sec_limit, save_log::Bool, out_dict::Dict
 
         dual_output_path = joinpath(output_dir, instance_name  * "_k" * string(current_iter_k) * "_dual.txt")
         write_vector_to_file(dual_output_path, output.dual_solution)
+
+        print("Successfuly saved files from call_pdlp")
 
     end # save_log end
 
@@ -401,8 +408,9 @@ function iterative_refinement(
     time_sec_limit=300,
     max_iter =100,
     alpha=1.1,
-    save_log=false # save the log on each iteration
-    # bound=1e3
+    save_log=false, # save the log on each iteration
+    no_alpha=false, # no alpha scaling
+    scaling_bound=1e50
 )
 
 
@@ -423,8 +431,11 @@ function iterative_refinement(
         # "l_inf_primal_residual" => Float64[],
         # "l_inf_dual_residual" => Float64[],
         "relative_l_inf_primal_residual" => Float64[], 
+        "l_inf_primal_residual" => Float64[],  # (1 + norm) correction (this need 1 more transformation)
         "relative_l_inf_dual_residual" => Float64[],
-        "relative_optimality_gap" => Float64[],
+        "l_inf_dual_residual" => Float64[], # (1 + norm) correction
+        "relative_optimality_gap" => Float64[], # There is no "l_inf" or whatsoever
+        "optimality_gap" => Float64[], # (1 + norm) correction
         "Delta_P" => Float64[],
         "Delta_D" => Float64[],
         "time_sec_limit" => time_sec_limit,
@@ -450,6 +461,9 @@ function iterative_refinement(
 
     # Initial iteration of the blackbox PDLP algorithm
     println("Initial iteration of the blackbox PDLP algorithm")
+    println("iterative tol: ", iterative_tol)
+    println("time sec limit: ", time_sec_limit)
+    println("save log: ", save_log)
     remaining_time = time_sec_limit
     total_time = time()
     t_start_k = time()
@@ -552,14 +566,24 @@ function iterative_refinement(
     push!(out["blackbox_time"], t_pdlp_0)
     push!(out["primal_objective"], convergence_info.primal_objective)
     push!(out["dual_objective"], convergence_info.dual_objective)
-    # # push!(out["l_inf_primal_residual"], convergence_info.l_inf_primal_residual)
-    # # push!(out["l_inf_dual_residual"], convergence_info.l_inf_dual_residual)
+    push!(out["l_inf_primal_residual"], convergence_info.l_inf_primal_residual)
+    push!(out["l_inf_dual_residual"], convergence_info.l_inf_dual_residual)
     push!(out["relative_l_inf_primal_residual"], convergence_info.relative_l_inf_primal_residual)
     push!(out["relative_l_inf_dual_residual"], convergence_info.relative_l_inf_dual_residual)
     push!(out["relative_optimality_gap"], convergence_info.relative_optimality_gap)
+    push!(out["optimality_gap"], abs(convergence_info.primal_objective - convergence_info.dual_objective))
     # Scalar version
     push!(out["Delta_P"], Delta_P) # careful with the scalar version meaning 
     push!(out["Delta_D"], Delta_D) # careful with the scalar version meaning
+
+    # println("Termination condition:")
+    # println("dir. dual: ", convergence_info.l_inf_dual_residual)
+    # println("rel. dual: ", convergence_info.relative_l_inf_dual_residual * (1 + norm(c, Inf)))
+    # println("dir. primal: ", convergence_info.l_inf_primal_residual)
+    # println("rel. primal: ", convergence_info.relative_l_inf_primal_residual * (1 + norm(b, Inf)))
+    # println("dir. gap: ", out["optimality_gap"])
+    # println("rel. gap: ", out["relative_optimality_gap"] * (1 + abs(convergence_info.primal_objective) + abs(convergence_info.dual_objective)))
+
 
     # Algorithm loop
     k = 0
@@ -594,9 +618,12 @@ function iterative_refinement(
         # Check the optimality condition for objective tolerance (KKT residual, max iters, and time limit)
         # (old from IR) if delta_P <= objective_tol && delta_2 <= objective_tol && delta_S <= objective_tol || k >= max_iter || remaining_time <= 0
         if ((
-            convergence_info.relative_optimality_gap        <= objective_tol && 
-            convergence_info.relative_l_inf_primal_residual <= objective_tol && 
-            convergence_info.relative_l_inf_dual_residual   <= objective_tol
+            out["relative_optimality_gap"][end]             <= objective_tol && 
+            out["relative_l_inf_primal_residual"][end]      <= objective_tol && 
+            out["relative_l_inf_dual_residual"][end]        <= objective_tol
+            # convergence_info.relative_optimality_gap          <= objective_tol && 
+            # convergence_info.relative_l_inf_primal_residual   <= objective_tol && 
+            # convergence_info.relative_l_inf_dual_residual     <= objective_tol
             ) || 
             k >= max_iter || 
             remaining_time <= 0 ||
@@ -619,8 +646,39 @@ function iterative_refinement(
 
         # Scalar version
         # Compute the scaling factors
-        Delta_P = 1 / maximum([delta_P, 1/(alpha * Delta_P)])
-        Delta_D = 1 / maximum([delta_D, 1/(alpha * Delta_D)])
+        if no_alpha
+            Delta_P = 1 / delta_P
+            Delta_D = 1 / delta_D
+
+            # # v6
+            # Delta_P = (1 / delta_P) * (k == 0) + min( 1 / delta_P , alpha*Delta_P ) * (k > 0) 
+            # Delta_D = (1 / delta_D) * (k == 0) + min( 1 / delta_D , alpha*Delta_D ) * (k > 0) 
+
+            # Log test_3
+            # Delta_P = log(1 + 1 / delta_P)
+            # Delta_D = log(1 + 1 / delta_D)
+            # v3: 1/delta decay # v4: decay x2
+            # Delta_P = ( 1 / delta_P )^(1/(2*(k+1)))
+            # Delta_D = ( 1 / delta_D )^(1/(2*(k+1)))
+        else # with alpha scaling
+            Delta_P = min( 1 / delta_P , alpha*Delta_P ) 
+            Delta_D = min( 1 / delta_D , alpha*Delta_D ) 
+            # Log test_3
+            # Delta_P = min( log(1 + 1 / delta_P) , alpha*Delta_P ) 
+            # Delta_D = min( log(1 + 1 / delta_D) , alpha*Delta_D ) 
+            # v3: 1/delta decay
+            # Delta_P = min( ( 1 / delta_P )^(1/(2*(k+1))) , alpha*Delta_P ) 
+            # Delta_D = min( ( 1 / delta_D )^(1/(2*(k+1))) , alpha*Delta_D ) 
+        end
+
+        # Bound on the scaling
+        Delta_P = max.( min.(Delta_P, scaling_bound), 1)#1/scaling_bound )
+        Delta_D = max.( min.(Delta_D, scaling_bound), 1)#1/scaling_bound )
+
+        # Print Deltas
+        println("Delta_P: ", Delta_P)
+        println("Delta_D: ", Delta_D)
+
 
         # Build the new LP
         b_bar = b_bar * Delta_P
@@ -646,7 +704,7 @@ function iterative_refinement(
         t_start_k = time()
         params, lp_k, output = call_pdlp(
             lp_k,
-            iterative_tol,
+            iterative_tol/(10^k), # v7: shrinking tolerance
             remaining_time,
             save_log,
             Dict(
@@ -686,11 +744,12 @@ function iterative_refinement(
         push!(out["blackbox_time"], t_pdlp_k)
         push!(out["primal_objective"], convergence_info.primal_objective)
         push!(out["dual_objective"], convergence_info.dual_objective)
-        # # push!(out["l_inf_primal_residual"], convergence_info.l_inf_primal_residual)
-        # # push!(out["l_inf_dual_residual"], convergence_info.l_inf_dual_residual)
+        push!(out["l_inf_primal_residual"], convergence_info.l_inf_primal_residual)
+        push!(out["l_inf_dual_residual"], convergence_info.l_inf_dual_residual)
         push!(out["relative_l_inf_primal_residual"], convergence_info.relative_l_inf_primal_residual)
         push!(out["relative_l_inf_dual_residual"], convergence_info.relative_l_inf_dual_residual)
         push!(out["relative_optimality_gap"], convergence_info.relative_optimality_gap)
+        push!(out["optimality_gap"], abs(convergence_info.primal_objective - convergence_info.dual_objective))
         # Scalar version
         push!(out["Delta_P"], Delta_P) # careful with the scalar version meaning 
         push!(out["Delta_D"], Delta_D) # careful with the scalar version meaning
@@ -712,7 +771,7 @@ function M_iterative_refinement(
     max_iter =100,
     alpha=1.1,
     save_log=false, # save the log on each iteration
-    scaling_type="D3_eq_D2inv", # "D3_eq_D2inv", "D3_eq_D2_eq_I", "D3_eq_D2_and_swap", "D3_dual_violation", "D3_dual_violation_swap", "D3_D2_iterative_swap", "D3_D2_mix", "D3_D2_mix_pure", "D123_pure"
+    scaling_type="D3_eq_D2inv", # "D3_eq_D2inv", "D3_eq_D2_eq_I", "D3_eq_D2_and_swap", "D3_dual_violation", "D3_dual_violation_swap", "D3_D2_iterative_swap", "D3_D2_mix", "D3_D2_mix_pure", "D123_pure", "D123_pure_max"
     scaling_bound=1e50 # bound on the scaling values
 )
 
@@ -734,8 +793,11 @@ function M_iterative_refinement(
         # "l_inf_primal_residual" => Float64[],
         # "l_inf_dual_residual" => Float64[],
         "relative_l_inf_primal_residual" => Float64[], 
+        "l_inf_primal_residual" => Float64[],  # (1 + norm) correction (this need 1 more transformation)
         "relative_l_inf_dual_residual" => Float64[],
-        "relative_optimality_gap" => Float64[],
+        "l_inf_dual_residual" => Float64[], # (1 + norm) correction
+        "relative_optimality_gap" => Float64[], # There is no "l_inf" or whatsoever
+        "optimality_gap" => Float64[], # (1 + norm) correction
         "D1_condition_number" => Float64[],
         "D2_condition_number" => Float64[],
         "D3_condition_number" => Float64[],
@@ -869,11 +931,12 @@ function M_iterative_refinement(
     push!(out["blackbox_time"], t_pdlp_0)
     push!(out["primal_objective"], convergence_info.primal_objective)
     push!(out["dual_objective"], convergence_info.dual_objective)
-    # # push!(out["l_inf_primal_residual"], convergence_info.l_inf_primal_residual)
-    # # push!(out["l_inf_dual_residual"], convergence_info.l_inf_dual_residual)
+    push!(out["l_inf_primal_residual"], convergence_info.l_inf_primal_residual)
+    push!(out["l_inf_dual_residual"], convergence_info.l_inf_dual_residual)
     push!(out["relative_l_inf_primal_residual"], convergence_info.relative_l_inf_primal_residual)
     push!(out["relative_l_inf_dual_residual"], convergence_info.relative_l_inf_dual_residual)
     push!(out["relative_optimality_gap"], convergence_info.relative_optimality_gap)
+    push!(out["optimality_gap"], abs(convergence_info.primal_objective - convergence_info.dual_objective))
     # Matrix version
     push!(out["D1_condition_number"], maximum(Delta_1)/minimum(Delta_1)) # Normal matrix: cond_number = |delta_max|/|delta_min|
     push!(out["D2_condition_number"], maximum(Delta_2)/minimum(Delta_2)) # Normal matrix: cond_number = |delta_max|/|delta_min|
@@ -911,7 +974,8 @@ function M_iterative_refinement(
         )   
         println("Max violation of l/u bounds (delta_2): ", maximum(delta_2))
 
-        if scaling_type in ["D3_dual_violation", "D3_dual_violation_swap", "D3_D2_iterative_swap", "D3_D2_mix", "D3_D2_mix_pure", "D123_pure"]
+        scaling_types_with_3 = ["D3_dual_violation", "D3_dual_violation_swap", "D3_D2_iterative_swap", "D3_D2_iterative_swap_indep", "D3_D2_mix", "D3_D2_mix_pure", "D123_pure", "D123_pure_max", "D3_D2_mix_max", "D3_D2_mix_max_pure"]
+        if scaling_type in scaling_types_with_3
             c_bar_sign = Vector{Float64}(c_bar) # Opposite sign c_bar's
             c_bar_sign[x_k .<= (l + u) / 2] .= -Vector{Float64}(c_bar[x_k .<= (l + u) / 2])
             # c_bar_plus = Vector{Float64}(c_bar) # original
@@ -938,9 +1002,12 @@ function M_iterative_refinement(
         # Check the optimality condition for objective tolerance (KKT residual, max iters, and time limit)
         # (old from IR) if delta_P <= objective_tol && delta_2 <= objective_tol && delta_S <= objective_tol || k >= max_iter || remaining_time <= 0
         if ((
-            convergence_info.relative_optimality_gap        <= objective_tol && 
-            convergence_info.relative_l_inf_primal_residual <= objective_tol && 
-            convergence_info.relative_l_inf_dual_residual   <= objective_tol
+            out["relative_optimality_gap"][end]             <= objective_tol && 
+            out["relative_l_inf_primal_residual"][end]      <= objective_tol && 
+            out["relative_l_inf_dual_residual"][end]        <= objective_tol
+            # convergence_info.relative_optimality_gap        <= objective_tol &&
+            # convergence_info.relative_l_inf_primal_residual <= objective_tol && 
+            # convergence_info.relative_l_inf_dual_residual   <= objective_tol
             ) || 
             k >= max_iter || 
             remaining_time <= 0 ||
@@ -963,17 +1030,21 @@ function M_iterative_refinement(
 
         # Matrix version
         # Compute the scaling factors
+        println("Computing the scaling factors... (Delta1/Delta2/Delta3)")
         # scaling_types: "D3_eq_D2inv", "D3_eq_D2_eq_I", "D3_eq_D2_and_swap", "D3_dual_violation"
         Delta_1 = min.(1 ./delta_1, alpha * Delta_1 ) # 1 ./  max.(delta_1, 1 ./ (alpha * Delta_1) )#  
-        if scaling_type=="D123_pure"
+        if scaling_type in ["D123_pure", "D123_pure_max"]
             Delta_1 = 1 ./delta_1 # 1 ./  max.(delta_1, 1 ./ (alpha * Delta_1) )#  
         end
         Delta_2 = min.(1 ./delta_2, alpha * Delta_2 )  # 1 ./  max.(delta_2, 1 ./ (alpha * Delta_2) )
         if scaling_type=="D3_eq_D2inv" 
             Delta_3 = 1 ./ Delta_2
-        elseif scaling_type=="D3_eq_D2_eq_I" # D3 = D2 = I (only equalities scaled) 
+        elseif scaling_type in ["D3_eq_D2_eq_I", "D3_eq_D2_eq_I_indep"] # D3 = D2 = I (only equalities scaled) 
             Delta_2 = ones(length(Delta_2))
             Delta_3 = Delta_2
+            if scaling_type == "D3_eq_D2_eq_I_indep"
+                Delta_1 = 1 ./delta_1  # Indep of alpha
+            end
         elseif scaling_type=="D3_eq_D2_and_swap"
             Delta_3 = Vector{Float64}(Delta_2) # Now D3 is D2, and D2 is D2inv
             Delta_2 = 1 ./ Delta_3 # swap
@@ -982,20 +1053,37 @@ function M_iterative_refinement(
         elseif scaling_type=="D3_dual_violation_swap"
             Delta_3 = min.(1 ./delta_3, alpha * Delta_3 ) # Dual violation on (c-A'y), but D2 = D3inv (recovers y)
             Delta_2 = 1 ./ Delta_3 # swap
-        elseif scaling_type=="D3_D2_iterative_swap"
+        elseif scaling_type in ["D3_D2_iterative_swap", "D3_D2_iterative_swap_indep"]
             if k % 2 == 0   # If its an even number
+                if scaling_type == "D3_D2_iterative_swap_indep"
+                    Delta_2 = 1 ./delta_2 # redefine D2 indep of alpha
+                end
                 Delta_3 = 1 ./ Delta_2 # same as "D3_eq_D2inv": D3 = D2inv
             else            # If its an odd number
-                Delta_3 = min.(1 ./delta_3, alpha * Delta_3 ) # Scaling (c-A'y), and D2 = D3inv
+                if scaling_type == "D3_D2_iterative_swap_indep"
+                    Delta_3 = 1 ./delta_3 # redefine D3 indep of alpha
+                else
+                    Delta_3 = min.(1 ./delta_3, alpha * Delta_3 ) # Scaling (c-A'y), and D2 = D3inv
+                end
                 Delta_2 = 1 ./ Delta_3 # swap
             end
         elseif scaling_type=="D3_D2_mix"
             Delta_2 = min.(delta_3, 1 ./delta_2, alpha*Delta_2) # Not so clear if min nor scale w. alpha (NOT 1/Delta_2 to not have numerical issues w/ max in D3)
             Delta_3 = 1 ./ Delta_2
+        elseif scaling_type=="D3_D2_mix_max"
+            Delta_3 = min.(delta_2, 1 ./delta_3, alpha*Delta_3) # Not so clear if min nor scale w. alpha (NOT 1/Delta_2 to not have numerical issues w/ max in D3)
+            Delta_2 = 1 ./ Delta_3
         elseif scaling_type in ["D3_D2_mix_pure", "D123_pure"]
             Delta_2 = min.(delta_3, 1 ./delta_2) # Not so clear if min nor scale w. alpha (NOT 1/Delta_2 to not have numerical issues w/ max in D3)
             Delta_3 = 1 ./ Delta_2
+        elseif scaling_type in ["D3_D2_mix_max_pure", "D123_pure_max"]
+            Delta_3 = min.(1 ./delta_3, delta_2) # equivalent to max in delta_2 of D123 pure
+            Delta_2 = 1 ./ Delta_3
+        else
+            println("Scaling method not available")
+            exit()
         end
+        println("Bounding the value of the scaling factors by: ", scaling_bound)
         # Scaling bound check
         Delta_1 = max.( min.(Delta_1, scaling_bound), 1/scaling_bound )
         Delta_2 = max.( min.(Delta_2, scaling_bound), 1/scaling_bound )
@@ -1004,6 +1092,7 @@ function M_iterative_refinement(
         # Delta_D = 1 / maximum([delta_D, 1/(alpha * Delta_D)])
 
         # Build the new LP (Matrix version)
+        println("Constructing the scaling matrices (D1/D2/D3)")
         D_1 = sparse(LinearAlgebra.I, length(Delta_1), length(Delta_1)).-0.0
         D_1[diagind(D_1)] = Delta_1
         # Print diagonal elements of D_1 which are different from 1.1
@@ -1053,7 +1142,7 @@ function M_iterative_refinement(
         t_start_k = time()
         params, lp_k, output = call_pdlp(
             lp_k,
-            iterative_tol,
+            iterative_tol/(10^k), # v7: shrinking tolerance
             remaining_time,
             save_log,
             Dict(
@@ -1094,11 +1183,12 @@ function M_iterative_refinement(
         push!(out["blackbox_time"], t_pdlp_k)
         push!(out["primal_objective"], convergence_info.primal_objective)
         push!(out["dual_objective"], convergence_info.dual_objective)
-        # # push!(out["l_inf_primal_residual"], convergence_info.l_inf_primal_residual)
-        # # push!(out["l_inf_dual_residual"], convergence_info.l_inf_dual_residual)
+        push!(out["l_inf_primal_residual"], convergence_info.l_inf_primal_residual)
+        push!(out["l_inf_dual_residual"], convergence_info.l_inf_dual_residual)
         push!(out["relative_l_inf_primal_residual"], convergence_info.relative_l_inf_primal_residual)
         push!(out["relative_l_inf_dual_residual"], convergence_info.relative_l_inf_dual_residual)
         push!(out["relative_optimality_gap"], convergence_info.relative_optimality_gap)
+        push!(out["optimality_gap"], abs(convergence_info.primal_objective - convergence_info.dual_objective))
         # # Scalar version
         # push!(out["Delta_P"], Delta_P) # careful with the scalar version meaning 
         # push!(out["Delta_D"], Delta_D) # careful with the scalar version meaning
