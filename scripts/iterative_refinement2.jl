@@ -4,6 +4,15 @@ import JSON3
 
 import cuPDLP
 
+include("/nfs/home2/nacevedo/RA/cuPDLP.jl/src/cuPDLP.jl")
+# folder_path = "/nfs/home2/nacevedo/RA/cuPDLP.jl/src/"
+# for file in readdir(folder_path)
+#     if endswith(file, ".jl")
+#         include(joinpath(folder_path, file))
+#     end
+# end
+# include("../src/primal_dual_hybrid_gradient_gpu.jl")
+
 # My imports
 # import Formatting
 using LinearAlgebra
@@ -113,18 +122,34 @@ function warm_up(lp::cuPDLP.QuadraticProgrammingProblem)
     )
 
     params_warmup = cuPDLP.PdhgParameters(
-        10,
-        false,
-        1.0,
-        1.0,
-        true,
-        0,
-        true,
-        64,
-        termination_params_warmup,
-        restart_params,
-        cuPDLP.AdaptiveStepsizeParams(0.3,0.6),
+        10,     #   l_inf_ruiz_iterations::Int
+        false,  #   l2_norm_rescaling::Bool
+        1.0,    #   pock_chambolle_alpha::Union{Float64,Nothing}
+        1.0,    #   primal_importance::Float64
+        true,   #   scale_invariant_initial_primal_weight::Bool
+        0,      #   verbosity::Int64
+        true,   #   record_iteration_stats::Bool
+        64,     #   termination_evaluation_frequency::Int32 
+        termination_params_warmup,  #   termination_criteria::TerminationCriteria
+        restart_params,             #   restart_params::RestartParameters      
+        cuPDLP.AdaptiveStepsizeParams(0.3,0.6), #   step_size_policy_params::Union{
+                                                #        AdaptiveStepsizeParams,
+                                                #        ConstantStepsizeParams,
+                                                #    }
     )
+
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     cuPDLP.optimize(params_warmup, lp);
 end
@@ -397,6 +422,277 @@ function cuPDLP_KKT_buffer(lp_0_stand, x_k, y_k)
 end
 
 
+function cuPDLP_from_initial_sol(
+    lp, tolerance, time_sec_limit, save_log, instance_name, output_path,
+    x_k, y_k, A,b,l,u,c
+    )
+
+    #     # Unscale iterates.
+#     buffer_original.original_primal_solution .=
+#     primal_solution ./ scaled_problem.variable_rescaling
+# buffer_original.original_primal_gradient .=
+#     primal_gradient .* scaled_problem.variable_rescaling
+# buffer_original.original_dual_solution .=
+#     dual_solution ./ scaled_problem.constraint_rescaling
+# buffer_original.original_primal_product .=
+#     primal_product .* scaled_problem.constraint_rescaling
+
+
+    # 1. My own initial state
+    println("Generating intial state from a previous solution...")
+    primal_size = length(x_k)
+    dual_size = length(y_k)
+    solver_state = cuPDLP.CuPdhgSolverState(
+        CuVector{Float64}(x_k), #   current_primal_solution::CuVector{Float64}
+        CuVector{Float64}(y_k), #   current_dual_solution::CuVector{Float64}
+        CuVector{Float64}(A*x_k),       #   current_primal_product::CuVector{Float64}
+        CuVector{Float64}(A'y_k),    #   current_dual_product::CuVector{Float64}
+        cuPDLP.initialize_solution_weighted_average(primal_size, dual_size),   #   solution_weighted_avg::CuSolutionWeightedAverage 
+        0.0,        #   step_size::Float64
+        1.0,        #   primal_weight::Float64
+        false,      #   numerical_error::Bool
+        0.0,        #   cumulative_kkt_passes::Float64
+        0,          #   total_number_iterations::Int64
+        nothing,    #   required_ratio::Union{Float64,Nothing}
+        nothing,    #   ratio_step_sizes::Union{Float64,Nothing}
+    )
+    # also check: update_solution_in_solver_state! in pdhg_gpu.jl
+
+    # DELTAS
+    # delta_primal[tx] = current_primal_solution[tx] - (step_size / primal_weight) * (objective_vector[tx] - current_dual_product[tx])
+    # delta_primal[tx] = min(variable_upper_bound[tx], max(variable_lower_bound[tx], delta_primal[tx]))
+    # delta_primal[tx] -= current_primal_solution[tx]
+
+    # delta_dual[tx] = current_dual_solution[tx] + (primal_weight * step_size) * (right_hand_side[tx] - (1 + extrapolation_coefficient) * delta_primal_product[tx] - extrapolation_coefficient * current_primal_product[tx])
+    # delta_dual[tx] -= current_dual_solution[tx]
+
+
+    # c = lp.objective_vector
+    # A = lp.constraint_matrix
+    # b = lp.right_hand_side
+    # l = lp.variable_lower_bound
+    # u = lp.variable_upper_bound
+
+    # 2. My own buffer
+    buffer_state = cuPDLP.CuBufferState(
+        CUDA.zeros(Float64, primal_size),      # delta_primal
+        CUDA.zeros(Float64, dual_size),        # delta_dual
+        CUDA.zeros(Float64, dual_size),        # delta_primal_product
+    )
+
+    buffer_avg = cuPDLP.CuBufferAvgState(
+        CuVector{Float64}(x_k),      # avg_primal_solution
+        CuVector{Float64}(y_k),        # avg_dual_solution
+        CuVector{Float64}(A*x_k),        # avg_primal_product
+        CuVector{Float64}(c - A'y_k),      # avg_primal_gradient
+    )
+
+    buffer_original = cuPDLP.BufferOriginalSol(
+        CuVector{Float64}(x_k),      # primal
+        CuVector{Float64}(y_k),        # dual
+        CuVector{Float64}(A*x_k),        # primal_product
+        CuVector{Float64}(c - A'y_k),      # primal_gradient
+    )
+    
+
+    # VIOLATIONS
+
+#     @inbounds begin
+#         constraint_violation[tx] = right_hand_side[tx] - activities[tx] #(activities = A*x)
+#     end
+# end
+# if num_equalities + 1 <= tx <= num_constraints
+#     @inbounds begin
+#         constraint_violation[tx] = max(right_hand_side[tx] - activities[tx], 0.0)
+
+    # @inbounds begin
+    #     lower_variable_violation[tx] = max(variable_lower_bound[tx] - primal_vec[tx], 0.0)
+    #     upper_variable_violation[tx] = max(primal_vec[tx] - variable_upper_bound[tx], 0.0)
+
+
+    # DUAL OBJECTIVE CONTRIBUTION
+    # @inbounds begin
+    #     if reduced_costs[tx] > 0.0
+    #         dual_objective_contribution_array[tx] = variable_lower_bound[tx] * reduced_costs[tx]
+    #     elseif reduced_costs[tx] < 0.0
+    #         dual_objective_contribution_array[tx] = variable_upper_bound[tx] * reduced_costs[tx]
+    #     else
+    #         dual_objective_contribution_array[tx] = 0.0
+
+    # COMPUTE DUAL STATS
+    # CUDA.@sync @cuda threads = ThreadPerBlock blocks = NumBlockIneq compute_dual_residual_kernel!(
+    #     buffer_kkt.dual_solution,
+    #     problem.num_equalities,
+    #     problem.num_constraints - problem.num_equalities,
+    #     buffer_kkt.dual_stats.dual_residual,
+    # )  
+    # buffer_kkt.dual_stats
+
+
+    buffer_kkt = cuPDLP.BufferKKTState(
+        buffer_original.original_primal_solution,      # primal
+        buffer_original.original_dual_solution,        # dual
+        buffer_original.original_primal_product,        # primal_product
+        buffer_original.original_primal_gradient,      # primal_gradient
+        CuVector{Float64}(max.(l - x_k, 0)),      # lower_variable_violation
+        CuVector{Float64}(max.(x_k - u, 0)),      # upper_variable_violation
+        CuVector{Float64}(b - A*x_k),        # constraint_violation (see above)
+        CuVector{Float64}(A'*y_k),      # dual_objective_contribution_array [this is just inference]
+        CuVector{Float64}(c-A'*y_k),      # reduced_costs_violations [this is not so clear]
+        cuPDLP.CuDualStats(
+            0.0,
+            CUDA.zeros(Float64, dual_size - lp.num_equalities),
+            CUDA.zeros(Float64, primal_size),
+        ),
+        0.0,                                   # dual_res_inf
+    )
+    
+    buffer_kkt_infeas = cuPDLP.BufferKKTState(
+        buffer_original.original_primal_solution,      # primal
+        buffer_original.original_dual_solution,        # dual
+        buffer_original.original_primal_product,        # primal_product
+        buffer_original.original_primal_gradient,      # primal_gradient
+        CuVector{Float64}(max.(l - x_k, 0)),      # lower_variable_violation
+        CuVector{Float64}(max.(x_k - u, 0)),      # upper_variable_violation
+        CuVector{Float64}(b - A*x_k),        # constraint_violation (see above)
+        CuVector{Float64}(A'*y_k),      # dual_objective_contribution_array [this is just inference]
+        CuVector{Float64}(c-A'*y_k),      # reduced_costs_violations [this is not so clear]
+        cuPDLP.CuDualStats(
+            0.0,
+            CUDA.zeros(Float64, dual_size - lp.num_equalities),
+            CUDA.zeros(Float64, primal_size),
+        ),
+        0.0,                                   # dual_res_inf
+    )
+
+    buffer_primal_gradient = buffer_original.original_primal_gradient#CUDA.zeros(Float64, primal_size)
+    # buffer_primal_gradient .= d_scaled_problem.scaled_qp.objective_vector .- solver_state.current_dual_product
+
+
+    # KKT RELATED BUT MAY NOT BE NECESSARY
+    qp_cache = cuPDLP.cached_quadratic_program_info(lp) # As in "optimize" function (line 462)
+    cuLPP = cuPDLP.qp_cpu_to_gpu(lp)
+
+    # OPTIMIZATION
+
+    # Wee need CUDA from here
+    oldstd = stdout
+    redirect_stdout(devnull)
+    warm_up(lp);
+    redirect_stdout(oldstd)
+
+    restart_params = cuPDLP.construct_restart_parameters(
+        cuPDLP.ADAPTIVE_KKT,    # NO_RESTARTS FIXED_FREQUENCY ADAPTIVE_KKT
+        cuPDLP.KKT_GREEDY,      # NO_RESTART_TO_CURRENT KKT_GREEDY
+        1000,                   # restart_frequency_if_fixed
+        0.36,                   # artificial_restart_threshold
+        0.2,                    # sufficient_reduction_for_restart
+        0.8,                    # necessary_reduction_for_restart
+        0.5,                    # primal_weight_update_smoothing
+    )
+
+    termination_params = cuPDLP.construct_termination_criteria(
+        optimality_norm = cuPDLP.L_INF, # L2 , L_INF
+        eps_optimal_absolute = tolerance,#1e-6,
+        eps_optimal_relative = tolerance,#1e-6,
+        eps_primal_infeasible = 1e-8, # This is not primal infeasibility tolerance
+        eps_dual_infeasible = 1e-8, # This is not dual infeasibility tolerance
+        time_sec_limit = time_sec_limit,
+        iteration_limit = typemax(Int32),
+        kkt_matrix_pass_limit = Inf,
+    )
+
+
+ 
+    params = cuPDLP.PdhgParameters(
+        10,             # l_inf_ruiz_iterations::Int
+        false,          # l2_norm_rescaling::Bool
+        1.0,            # pock_chambolle_alpha::Union{Float64,Nothing}
+        1.0,            # primal_importance::Float64
+        true,           # scale_invariant_initial_primal_weight::Bool
+        2,              # verbosity::Int64
+        true,           # record_iteration_stats::Bool
+        1,              # termination_evaluation_frequency::Int32 (Default: 64)
+        termination_params, # termination_criteria::TerminationCriteria
+        restart_params,     # restart_params::RestartParameters
+        cuPDLP.AdaptiveStepsizeParams(0.3,0.6), # step_size_policy_params::Union{
+                                                #     AdaptiveStepsizeParams,
+                                                #     ConstantStepsizeParams,
+                                                # }
+    )
+
+    println("Optimizing from initial solver state...")
+    output = cuPDLP.optimize(
+    params,
+    lp,
+    (x_k, y_k), # primal_dual_solution
+    (A,b,c,l,u) # problem_params
+    )
+
+    #     # Unscale iterates.
+    #     buffer_original.original_primal_solution .=
+    #     primal_solution ./ scaled_problem.variable_rescaling
+    # buffer_original.original_primal_gradient .=
+    #     primal_gradient .* scaled_problem.variable_rescaling
+    # buffer_original.original_dual_solution .=
+    #     dual_solution ./ scaled_problem.constraint_rescaling
+    # buffer_original.original_primal_product .=
+    #     primal_product .* scaled_problem.constraint_rescaling
+
+
+    save_log = false   
+    if save_log
+        println("SAVING LOG...")
+        # instance_name = out_dict["instance_name"]
+        output_dir = output_path * "/subPDLP"
+        # current_iter_k = out_dict["current_iter_k"]
+
+        # Check if the output directory exists, and create it if not
+        if !isdir(output_dir)
+            mkdir(output_dir)
+        end
+
+        # Save the logs (originally from solve.jl)
+        log = cuPDLP.SolveLog()
+        log.instance_name = instance_name
+        log.command_line_invocation = join([PROGRAM_FILE; ARGS...], " ")
+        log.termination_reason = output.termination_reason
+        log.termination_string = output.termination_string
+        log.iteration_count = output.iteration_count
+        log.solve_time_sec = output.iteration_stats[end].cumulative_time_sec
+        log.solution_stats = output.iteration_stats[end]
+        log.solution_type = cuPDLP.POINT_TYPE_AVERAGE_ITERATE
+
+        print("Saving log from cuPDLP_from_initial_sol...")
+
+        instance_name = replace(instance_name, ".mps" => "")
+
+        # println(instance_name * "_k" * string(current_iter_k) * "_summary.json")
+        summary_output_path = joinpath(output_dir, instance_name * "_k" * string(current_iter_k) * "_summary.json")
+        open(summary_output_path, "w") do io
+            write(io, JSON3.write(log, allow_inf = true))
+        end
+
+        log.iteration_stats = output.iteration_stats
+        full_log_output_path =
+            joinpath(output_dir, instance_name * "_k" * string(current_iter_k) * "_full_log.json.gz")
+        GZip.open(full_log_output_path, "w") do io
+            write(io, JSON3.write(log, allow_inf = true))
+        end
+
+        primal_output_path = joinpath(output_dir, instance_name  * "_k" * string(current_iter_k) * "_primal.txt")
+        write_vector_to_file(primal_output_path, output.primal_solution)
+
+        dual_output_path = joinpath(output_dir, instance_name  * "_k" * string(current_iter_k) * "_dual.txt")
+        write_vector_to_file(dual_output_path, output.dual_solution)
+
+        print("Successfuly saved files from cuPDLP_from_initial_sol")
+    end
+
+    return output
+
+end
+
 
 
 # New version (2025)
@@ -553,15 +849,15 @@ function iterative_refinement(
     qp_cache = cuPDLP.cached_quadratic_program_info(lp_0_stand) # As in "optimize" function (line 462)
     cuLPP = cuPDLP.qp_cpu_to_gpu(lp_0_stand)
     convergence_info = cuPDLP.compute_convergence_information(
-        cuLPP,#::CuLinearProgrammingProblem,
-        qp_cache,#::CachedQuadraticProgramInfo,
-        CuVector{Float64}(x_k),#::CuVector{Float64},
-        CuVector{Float64}(y_k),#::CuVector{Float64},
-        1.0,#::Float64,
-        cuPDLP.POINT_TYPE_AVERAGE_ITERATE,#::PointType,
-        CuVector{Float64}(A*x_k),#::CuVector{Float64},
-        CuVector{Float64}(c - A'y_k),#::CuVector{Float64},
-        buffer_kkt#::BufferKKTState,
+        cuLPP, #        problem::CuLinearProgrammingProblem,
+        qp_cache,#      qp_cache::CachedQuadraticProgramInfo,
+        CuVector{Float64}(x_k),#    primal_iterate::CuVector{Float64},
+        CuVector{Float64}(y_k),#    dual_iterate::CuVector{Float64},
+        1.0, #          eps_ratio::Float64,
+        cuPDLP.POINT_TYPE_AVERAGE_ITERATE,# candidate_type::PointType,
+        CuVector{Float64}(A*x_k),#      primal_product::CuVector{Float64},
+        CuVector{Float64}(c - A'y_k),#  primal_gradient::CuVector{Float64},
+        buffer_kkt  #   buffer_kkt::BufferKKTState,
     )
 
 
@@ -691,47 +987,88 @@ function iterative_refinement(
 
 
         # Redefine iterative refinement tolerance in terms of KKT_0
+        skip_IR = false
         kkt_k = norm([out["relative_l_inf_primal_residual"], out["relative_l_inf_dual_residual"], out["relative_optimality_gap"]], Inf)
-        # println("k ", k)
-        if k > 0
+        if k > 1
             iterative_tol_k = max( min(kkt_k*tol_decrease_factor, iterative_tol_k*tol_decrease_factor), objective_tol ) # redefinition of epsilon_IR
+        # elseif k>1
+        println("\n\n\n\nINITIAL ITERATIVE TOL\n\n\n\n")
+        #     iterative_tol_k = 1e-1/(10^(k-2))
+        elseif k==1 # switch this
+            println("\n\n\n\nSOLVING VIA DIRECT CUPDLP\n\n\n\n")
+
+            # Delta_P = 1
+            # Delta_D = 1
+            # Delta_2 = ones(length(Delta_2))
+            # Delta_3 = ones(length(Delta_3))
+            iterative_tol_k = objective_tol
+            println("Iteration ", k + 1, ", of ", instance_name, ", solved via scalar")
+            remaining_time -= (time() - t_start_k)
+            println("remaining_time: ", remaining_time)
+            t_start_k = time()
+            output = cuPDLP_from_initial_sol(
+                lp_0_stand, 
+                iterative_tol_k, 
+                remaining_time, 
+                true, #save_log
+                instance_name, 
+                output_path,
+                x_k, 
+                y_k, 
+                A,
+                b,
+                l,
+                u,
+                c
+            )
+            t_pdlp_k = time() - t_start_k
+            skip_IR = true
         else  
+            # iterative_tol_k does not exists yet on k=0
             global iterative_tol_k = max( kkt_k*tol_decrease_factor, objective_tol )
         end
 
-        lp_k = cuPDLP.QuadraticProgrammingProblem(
-            l_bar,
-            u_bar,
-            lp_0_stand.objective_matrix,
-            c_bar,
-            0,
-            A, # A_bar,
-            b_bar,
-            lp_0_stand.num_equalities
-        )
+        if !skip_IR
 
-        # Solve the new LP (blackbox PDLP algorithm)
-        println("Iteration ", k + 1)
-        remaining_time -= (time() - t_start_k)
-        println("remaining_time: ", remaining_time)
-        t_start_k = time()
-        params, lp_k, output = call_pdlp(
-            lp_k,
-            iterative_tol_k, #/(10^k), # v7: shrinking tolerance
-            remaining_time,
-            save_log,
-            Dict(
-            "instance_name" => instance_name, # or some variation of name
-            "output_dir" => output_path,
-            "current_iter_k" => k,
-            ),
-            typemax(Int32) # iteration_limit: No iteration limit on the subproblems (could be change to same as iter 0). KKT_0
-        )
-        t_pdlp_k = time() - t_start_k
+            lp_k = cuPDLP.QuadraticProgrammingProblem(
+                l_bar,
+                u_bar,
+                lp_0_stand.objective_matrix,
+                c_bar,
+                0,
+                A, # A_bar,
+                b_bar,
+                lp_0_stand.num_equalities
+            )
 
-        # Scalar version
-        x_k = x_k + output.primal_solution / Delta_P
-        y_k = y_k + output.dual_solution / Delta_D
+            # Solve the new LP (blackbox PDLP algorithm)
+            println("Iteration ", k + 1)
+            remaining_time -= (time() - t_start_k)
+            println("remaining_time: ", remaining_time)
+            t_start_k = time()
+            params, lp_k, output = call_pdlp(
+                lp_k,
+                iterative_tol_k, #/(10^k), # v7: shrinking tolerance
+                remaining_time,
+                save_log,
+                Dict(
+                "instance_name" => instance_name, # or some variation of name
+                "output_dir" => output_path,
+                "current_iter_k" => k,
+                ),
+                typemax(Int32) # iteration_limit: No iteration limit on the subproblems (could be change to same as iter 0). KKT_0
+            )
+            t_pdlp_k = time() - t_start_k
+
+            # Scalar version
+            x_k = x_k + output.primal_solution / Delta_P
+            y_k = y_k + output.dual_solution / Delta_D
+
+        else
+
+            x_k = output.primal_solution#x_k + output.primal_solution / Delta_P
+            y_k = output.dual_solution # y_k + output.dual_solution / Delta_D
+        end
 
         optimal_primal_cost = sum(c.*x_k)
         optimal_dual_cost = sum(b.*y_k)
@@ -1274,7 +1611,7 @@ function M_iterative_refinement(
             primal_res = convergence_info.relative_l_inf_primal_residual
             dual_res = convergence_info.relative_l_inf_dual_residual
 
-            if maximum(delta_1) > 0 # If not zero violation
+            if maximum(delta_1) > 0# If not zero violation
                 # delta correction
                 n_delta_1 = floor(log10(maximum(delta_1)))
                 delta_1 = delta_1 * 10^(-n_delta_1)
@@ -1403,50 +1740,90 @@ function M_iterative_refinement(
         A_bar = D_1 * A_bar * D_2_inv # New A
 
 
+
         # Redefine iterative refinement tolerance in terms of KKT_0
+        skip_IR = false
         kkt_k = norm([out["relative_l_inf_primal_residual"], out["relative_l_inf_dual_residual"], out["relative_optimality_gap"]], Inf)
-        if k > 0
+        if k > 1
             iterative_tol_k = max( min(kkt_k*tol_decrease_factor, iterative_tol_k*tol_decrease_factor), objective_tol ) # redefinition of epsilon_IR
+        # elseif k>1
+        println("\n\n\n\nINITIAL ITERATIVE TOL\n\n\n\n")
+        #     iterative_tol_k = 1e-1/(10^(k-2))
+        elseif k==1 # switch this
+            println("\n\n\n\nSOLVING VIA DIRECT CUPDLP\n\n\n\n")
+
+            Delta_1 = ones(length(Delta_1))
+            Delta_2 = ones(length(Delta_2))
+            Delta_3 = ones(length(Delta_3))
+            iterative_tol_k = objective_tol
+            println("Iteration ", k + 1, ", of ", instance_name, ", solved via ", scaling_type)
+            remaining_time -= (time() - t_start_k)
+            println("remaining_time: ", remaining_time)
+            t_start_k = time()
+            output = cuPDLP_from_initial_sol(
+                lp_0_stand, 
+                iterative_tol_k, 
+                remaining_time, 
+                true, #save_log
+                instance_name, 
+                output_path,
+                x_k, 
+                y_k, 
+                A,
+                b,
+                l,
+                u,
+                c
+            )
+            t_pdlp_k = time() - t_start_k
+            skip_IR = true
         else  
             # iterative_tol_k does not exists yet on k=0
             global iterative_tol_k = max( kkt_k*tol_decrease_factor, objective_tol )
         end
 
+        if !skip_IR
+            
+        
+            lp_k = cuPDLP.QuadraticProgrammingProblem(
+                l_bar,
+                u_bar,
+                lp_0_stand.objective_matrix,
+                c_bar,
+                0,
+                A_bar,
+                b_bar,
+                lp_0_stand.num_equalities
+            )
 
-        lp_k = cuPDLP.QuadraticProgrammingProblem(
-            l_bar,
-            u_bar,
-            lp_0_stand.objective_matrix,
-            c_bar,
-            0,
-            A_bar,
-            b_bar,
-            lp_0_stand.num_equalities
-        )
+            # Solve the new LP (blackbox PDLP algorithm)
+            println("Iteration ", k + 1, ", of ", instance_name, ", solved via ", scaling_type)
+            remaining_time -= (time() - t_start_k)
+            println("remaining_time: ", remaining_time)
+            t_start_k = time()
+            params, lp_k, output = call_pdlp(
+                lp_k,
+                iterative_tol_k, #/(10^k), # v7: shrinking tolerance
+                remaining_time,
+                save_log,
+                Dict(
+                "instance_name" => instance_name, # or some variation of name
+                "output_dir" => output_path,
+                "current_iter_k" => k,
+                ),
+                typemax(Int32)
+            )
+            t_pdlp_k = time() - t_start_k
+            # Matrix version
+            # Retrieve the solution to the original problem
+            x_k =  x_k + D_2_inv * output.primal_solution
+            y_k =  y_k + D_1 * output.dual_solution 
+        else
+            # Retrieve the solution to the original problem
+            x_k =  output.primal_solution
+            y_k =  output.dual_solution  
+        end
 
-        # Solve the new LP (blackbox PDLP algorithm)
-        println("Iteration ", k + 1, ", of ", instance_name, ", solved via ", scaling_type)
-        remaining_time -= (time() - t_start_k)
-        println("remaining_time: ", remaining_time)
-        t_start_k = time()
-        params, lp_k, output = call_pdlp(
-            lp_k,
-            iterative_tol_k, #/(10^k), # v7: shrinking tolerance
-            remaining_time,
-            save_log,
-            Dict(
-            "instance_name" => instance_name, # or some variation of name
-            "output_dir" => output_path,
-            "current_iter_k" => k,
-            ),
-            typemax(Int32)
-        )
-        t_pdlp_k = time() - t_start_k
-
-        # Matrix version
-        # Retrieve the solution to the original problem
-        x_k =  x_k + D_2_inv * output.primal_solution
-        y_k =  y_k + D_1 * output.dual_solution 
 
         optimal_primal_cost = sum(c.*x_k)
         optimal_dual_cost = sum(b.*y_k)
