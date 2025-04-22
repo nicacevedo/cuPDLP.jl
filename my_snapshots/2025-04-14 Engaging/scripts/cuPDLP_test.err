@@ -1,0 +1,4 @@
+ERROR: syntax: invalid operator "--"
+Stacktrace:
+ [1] top-level scope
+   @ none:1

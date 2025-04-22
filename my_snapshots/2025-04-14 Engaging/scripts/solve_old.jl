@@ -2,10 +2,7 @@ import ArgParse
 import GZip
 import JSON3
 
-# import cuPDLP
-include("/nfs/home2/nacevedo/RA/cuPDLP.jl/src/cuPDLP.jl")
-
-@enum OptimalityNorm L_INF L2 # Mine
+import cuPDLP
 
 function write_vector_to_file(filename, vector)
     open(filename, "w") do io
@@ -19,9 +16,6 @@ function solve_instance_and_output(
     parameters::cuPDLP.PdhgParameters,
     output_dir::String,
     instance_path::String,
-    ir_instead_restart,
-    ir_type::String="scalar",
-    ir_iteration_threshold::Int64=1000,
 )
     if !isdir(output_dir)
         mkpath(output_dir)
@@ -47,8 +41,7 @@ function solve_instance_and_output(
             println("Instance: ", instance_name)
         end
 
-        # IR instead restart
-        output::cuPDLP.SaddlePointOutput = cuPDLP.optimize(parameters, lp, ir_instead_restart, ir_type, ir_iteration_threshold)
+        output::cuPDLP.SaddlePointOutput = cuPDLP.optimize(parameters, lp)
     
         log = cuPDLP.SolveLog()
         log.instance_name = instance_name
@@ -155,7 +148,7 @@ function parse_command_line()
 end
 
 
-function main(instance_path,output_directory,tolerance, time_sec_limit, ir_instead_restart=false, ir_type::String="scalar", ir_iteration_threshold::Int64=1000)
+function main(instance_path,output_directory,tolerance, time_sec_limit)
     # parsed_args = parse_command_line()
     # instance_path = parsed_args["instance_path"]
     println("Instance path: ", instance_path)
@@ -165,14 +158,12 @@ function main(instance_path,output_directory,tolerance, time_sec_limit, ir_inste
 
     println("Trying to read instance from ", instance_path)
     lp = cuPDLP.qps_reader_to_standard_form(instance_path)
-    println("Instance read successfully and transformed to 'standard form'")
+    println("Instance read successfully")
 
     oldstd = stdout
     redirect_stdout(devnull)
     warm_up(lp);
     redirect_stdout(oldstd)
-
-    print("Passed through warm up")
 
     restart_params = cuPDLP.construct_restart_parameters(
         cuPDLP.ADAPTIVE_KKT,    # NO_RESTARTS FIXED_FREQUENCY ADAPTIVE_KKT
@@ -185,7 +176,7 @@ function main(instance_path,output_directory,tolerance, time_sec_limit, ir_inste
     )
 
     termination_params = cuPDLP.construct_termination_criteria(
-        optimality_norm = cuPDLP.L_INF,#  L2,L_INF
+        optimality_norm = cuPDLP.L_INF, # L2
         eps_optimal_absolute = tolerance,
         eps_optimal_relative = tolerance,
         eps_primal_infeasible = 1.0e-8,
@@ -213,9 +204,6 @@ function main(instance_path,output_directory,tolerance, time_sec_limit, ir_inste
         params,
         output_directory,
         instance_path,
-        ir_instead_restart,
-        ir_type,
-        ir_iteration_threshold,
     )
 
 end

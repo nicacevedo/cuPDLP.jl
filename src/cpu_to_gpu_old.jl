@@ -14,8 +14,8 @@ mutable struct CuLinearProgrammingProblem
 end
 
 mutable struct CuScaledQpProblem
-    original_qp::Union{CuLinearProgrammingProblem, CuQuadraticProgrammingProblem}
-    scaled_qp::Union{CuLinearProgrammingProblem, CuQuadraticProgrammingProblem}
+    original_qp::CuLinearProgrammingProblem
+    scaled_qp::CuLinearProgrammingProblem
     constraint_rescaling::CuVector{Float64}
     variable_rescaling::CuVector{Float64}
 end
@@ -23,18 +23,18 @@ end
 """
 Transfer quadratic program from CPU to GPU
 """
-function qp_cpu_to_gpu(problem::Union{QuadraticProgrammingProblem,CuQuadraticProgrammingProblem})
+function qp_cpu_to_gpu(problem::QuadraticProgrammingProblem)
     num_constraints, num_variables = size(problem.constraint_matrix)
+    isfinite_variable_lower_bound = Vector{Bool}(isfinite.(problem.variable_lower_bound))
+    isfinite_variable_upper_bound = Vector{Bool}(isfinite.(problem.variable_upper_bound))
+
     d_variable_lower_bound = CuArray{Float64}(undef, num_variables)
     d_variable_upper_bound = CuArray{Float64}(undef, num_variables)
     d_isfinite_variable_lower_bound = CuArray{Bool}(undef, num_variables)
     d_isfinite_variable_upper_bound = CuArray{Bool}(undef, num_variables)
     d_objective_vector = CuArray{Float64}(undef, num_variables)
     d_right_hand_side = CuArray{Float64}(undef, num_constraints)
-    
-    isfinite_variable_lower_bound = Vector{Bool}(isfinite.(problem.variable_lower_bound))
-    isfinite_variable_upper_bound = Vector{Bool}(isfinite.(problem.variable_upper_bound))
-    
+
     copyto!(d_variable_lower_bound, problem.variable_lower_bound)
     copyto!(d_variable_upper_bound, problem.variable_upper_bound)
     copyto!(d_isfinite_variable_lower_bound, isfinite_variable_lower_bound)
@@ -65,7 +65,7 @@ end
 """
 Transfer scaled QP from CPU to GPU
 """
-function scaledqp_cpu_to_gpu(scaled_problem::Union{ScaledQpProblem, CuScaledQpProblem})
+function scaledqp_cpu_to_gpu(scaled_problem::ScaledQpProblem)
     d_constraint_rescaling = CuArray{Float64}(undef,length(scaled_problem.constraint_rescaling))
     d_variable_rescaling = CuArray{Float64}(undef,length(scaled_problem.variable_rescaling))
 

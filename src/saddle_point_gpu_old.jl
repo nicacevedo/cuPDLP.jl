@@ -1,16 +1,15 @@
 
-# include("/nfs/home2/nacevedo/RA/cuPDLP.jl/scripts/clean_iterative_refinement.jl")
 
 struct SaddlePointOutput
     """
     The output primal solution vector.
     """
-    primal_solution::Union{Vector{Float64}, CuVector{Float64}}
+    primal_solution::Vector{Float64}
 
     """
     The output dual solution vector.
     """
-    dual_solution::Union{Vector{Float64}, CuVector{Float64}}
+    dual_solution::Vector{Float64}
 
     """
     One of the possible values from the TerminationReason enum.
@@ -34,11 +33,12 @@ struct SaddlePointOutput
     iteration_stats::Vector{IterationStats}
 end
 
+
 """
 Return the unscaled primal and dual solutions
 """
 function unscaled_saddle_point_output(
-    scaled_problem::Union{ScaledQpProblem, CuScaledQpProblem},
+    scaled_problem::ScaledQpProblem,
     primal_solution::AbstractVector{Float64},
     dual_solution::AbstractVector{Float64},
     termination_reason::TerminationReason,
@@ -309,10 +309,6 @@ mutable struct CuRestartInfo
 
     primal_product::CuVector{Float64}
     primal_gradient::CuVector{Float64}
-
-    # MINE: number of IR applied
-    ir_refinement_applied::Bool
-    ir_refinements_number::Int64 
 end
 
 """
@@ -335,8 +331,6 @@ function create_last_restart_info(
         1.0,
         copy(primal_product),
         copy(primal_gradient),
-        false, # MINE: Applied IR
-        0, # MINE: Number of IR applied
     )
 end
 
@@ -499,15 +493,6 @@ function run_restart_scheme(
     buffer_avg::CuBufferAvgState,
     buffer_kkt::BufferKKTState,
     buffer_primal_gradient::CuVector{Float64},
-    # MINE
-    qp_cache::Any,
-    pdhg_iteration::Int,
-    termination_criteria::Any=nothing, #TerminationCriteria,
-    ir_over_restart::Bool=false,
-    ir_type::String="scalar",
-    ir_iteration_threshold::Int64=1000,
-    ir_tolerance_factor::Float64=1e-3,
-    # last_restart_iteration::Int,
 )
     if solution_weighted_avg.sum_primal_solutions_count > 0 &&
         solution_weighted_avg.sum_dual_solutions_count > 0
@@ -584,96 +569,18 @@ function run_restart_scheme(
         end
     end
 
-    ir_refinement_applied = false # MINE
-
     if !do_restart
         return RESTART_CHOICE_NO_RESTART
-    else # MINE: If we do restart
+    else
         if reset_to_average
             if verbosity >= 4
                 print("  Restarted to average")
             end
-            # ir_iteration_threshold = 1
-            # if !(ir_over_restart && (pdhg_iteration >= ir_iteration_threshold) && last_restart_info.ir_refinements_number == 0) # && 1<0# && last_restart_info.last_restart_length <= 2 # only 1 iter
-
             current_primal_solution .= buffer_avg.avg_primal_solution
             current_dual_solution .= buffer_avg.avg_dual_solution
             primal_product .= buffer_avg.avg_primal_product
             dual_product .= problem.objective_vector .- buffer_avg.avg_primal_gradient
             buffer_primal_gradient .= buffer_avg.avg_primal_gradient
-
-            # MINE: Apply IR over the average/current solution
-            # 500 <= last_restart_info.last_restart_length <= 1000 && 0 >1
-            # && isnothing(last_restart_info.last_restart_kkt_residual)
-            # NOTE: I am not sure what "last_restart_length" is. I am assuming it is the distance of the current iteration and the last restart.
-            #elseif
-            if ir_over_restart && (pdhg_iteration >= ir_iteration_threshold) && last_restart_info.ir_refinements_number == 0 # && 1<0# && last_restart_info.last_restart_length <= 2 # only 1 iter
-                println("threshold: ", ir_iteration_threshold)
-                println("I AM DOING ["*string(ir_type)*"] IR (iteration threshold:"*string(ir_iteration_threshold)*")")
-                println("cuPDLP iteration: "*string(pdhg_iteration))
-    
-                # println("PRE-Checking feasibility of IR solution...")
-                # println("1) Primal feasibility violations:")
-                # println("1.1) Lower bound: ", sum(problem.variable_lower_bound .> current_primal_solution))
-                # println("1.2) Upper bound: ", sum(problem.variable_upper_bound .< current_primal_solution))
-                # println("1.3) At least Ax>=b: ", sum(problem.constraint_matrix*current_primal_solution .< problem.right_hand_side)) #
-    
-                # println("CURRENT PDHG ITERATION: ", pdhg_iteration)
-                # println("LAST RESTART LENGTH: ", last_restart_info.last_restart_length)
-                # println("RESTART LENGTH: ", restart_length)
-                # println("Last restart ir number: ", last_restart_info.ir_refinements_number)
-
-                # # println("LAST RESTART 2: ", last_restart_info.primal_distance_moved_last_restart_period)
-                # # println("LAST RESTART 3:", last_restart_info.kkt_reduction_ratio_last_trial)
-                # # println("LAST RESTART 4:", last_restart_info.)
-
-
-                # DO: Iterative refinement
-                
-                ir_output = iterative_refinement(
-                problem,            # Potentially: Scaled problem of cuPDLP
-                current_primal_solution,       
-                current_dual_solution,
-                # My inputs
-                qp_cache,
-                termination_criteria.eps_optimal_relative, # tolerance
-                ir_tolerance_factor,        # ir_tolerance_factor
-                1.1,        # alpha
-                ir_type,   # scaling type
-                # "matrix",
-                "scalar",   # scaling name
-                )
-                
-                current_primal_solution .= ir_output.current_primal_solution
-                current_dual_solution .= ir_output.current_dual_solution
-                primal_product .= ir_output.primal_product
-                dual_product .= ir_output.dual_product
-                buffer_primal_gradient .= ir_output.primal_gradient
-
-                # println("Checking feasibility of IR solution...")
-                # println("1) Primal feasibility violations:")
-                # println("1.1) Lower bound: ", sum(problem.variable_lower_bound .> current_primal_solution))
-                # println("1.2) Upper bound: ", sum(problem.variable_upper_bound .< current_primal_solution))
-                # println("1.3) At least Ax>=b: ", sum(problem.constraint_matrix*current_primal_solution .+ 1e-8 .< problem.right_hand_side)) #
-                # # println("2) Somewhat dual feasibility violations:")
-                # # println("2.1) c-A'y >= 0: ", sum(problem.objective_vector .< problem.constraint_matrix_t * current_dual_solution))
-
-            #     problem.variable_lower_bound,#Vector{Float64}(problem.variable_lower_bound),
-            #     problem.variable_upper_bound,#Vector{Float64}(problem.variable_upper_bound),
-            #     CUDA.CUSPARSE.CuSparseMatrixCSR(spzeros(length(current_primal_solution), length(current_primal_solution))),#spzeros(length(x_k), length(x_k)), # objective matrix. I guess it is Q: x'Qx + c'x + b
-            #     problem.objective_vector,#Vector{Float64}(problem.objective_vector),
-            #     problem.objective_constant,#problem.objective_constant,  # Objective constant. I guess it is b: x'Qx + c'x + b
-            #     problem.constraint_matrix,#cu_quad_to_quad_matrix(problem.constraint_matrix),
-            #     problem.right_hand_side, #Vector{Float64}(problem.right_hand_side),
-            #     problem.num_equalities, #problem.num_equalities,
-            # )
-                # println("norm of primal sol:")
-                # println(CUDA.norm(current_primal_solution))
-                # println("norm of dual sol:")
-                # println(CUDA.norm(current_dual_solution))
-
-                ir_refinement_applied = true
-            end
         else
         # Current point is much better than average point.
             if verbosity >= 4
@@ -704,7 +611,6 @@ function run_restart_scheme(
             restart_length,
             primal_product,
             buffer_primal_gradient,
-            ir_refinement_applied
         )
 
         if reset_to_average
@@ -763,7 +669,6 @@ function update_last_restart_info!(
     restart_length::Int64,
     primal_product::CuVector{Float64},
     primal_gradient::CuVector{Float64},
-    ir_refinement_applied::Bool, # MINE
 )
     last_restart_info.primal_distance_moved_last_restart_period =
         weighted_norm(
@@ -784,8 +689,6 @@ function update_last_restart_info!(
     last_restart_info.primal_product .= primal_product
     last_restart_info.primal_gradient .= primal_gradient
 
-    last_restart_info.ir_refinement_applied = ir_refinement_applied 
-    last_restart_info.ir_refinements_number += ir_refinement_applied
 end
 
 
@@ -803,7 +706,7 @@ end
 
 
 function generic_final_log(
-    problem::Union{QuadraticProgrammingProblem, CuQuadraticProgrammingProblem},
+    problem::QuadraticProgrammingProblem,
     current_primal_solution::Vector{Float64},
     current_dual_solution::Vector{Float64},
     last_iteration_stats::IterationStats,

@@ -21,7 +21,6 @@ function solve_instance_and_output(
     instance_path::String,
     ir_instead_restart,
     ir_type::String="scalar",
-    ir_iteration_threshold::Int64=1000,
 )
     if !isdir(output_dir)
         mkpath(output_dir)
@@ -48,7 +47,7 @@ function solve_instance_and_output(
         end
 
         # IR instead restart
-        output::cuPDLP.SaddlePointOutput = cuPDLP.optimize(parameters, lp, ir_instead_restart, ir_type, ir_iteration_threshold)
+        output::cuPDLP.SaddlePointOutput = cuPDLP.optimize(parameters, lp, ir_instead_restart, ir_type)
     
         log = cuPDLP.SolveLog()
         log.instance_name = instance_name
@@ -155,7 +154,7 @@ function parse_command_line()
 end
 
 
-function main(instance_path,output_directory,tolerance, time_sec_limit, ir_instead_restart=false, ir_type::String="scalar", ir_iteration_threshold::Int64=1000)
+function main(instance_path,output_directory,tolerance, time_sec_limit, ir_instead_restart=false, ir_type::String="scalar")
     # parsed_args = parse_command_line()
     # instance_path = parsed_args["instance_path"]
     println("Instance path: ", instance_path)
@@ -215,7 +214,6 @@ function main(instance_path,output_directory,tolerance, time_sec_limit, ir_inste
         instance_path,
         ir_instead_restart,
         ir_type,
-        ir_iteration_threshold,
     )
 
 end

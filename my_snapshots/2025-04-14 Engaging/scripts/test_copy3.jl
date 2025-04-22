@@ -1,6 +1,7 @@
 include("./solve.jl")
 # include("./iterative_refinement.jl")
-include("./iterative_refinement2.jl")
+# include("./iterative_refinement2.jl")
+include("/nfs/home2/nacevedo/RA/cuPDLP.jl/src/cuPDLP.jl")
 
 
 
@@ -45,13 +46,15 @@ function test()
     iter_tol = 1e3 # Now the initial one
     tol_decrease_factor=0.001 # 1e-3
     scaling_bound = 1/objective_tol # if tol = 0, then 1/tol = infinity (?)
-    time_sec_limit= 3600#1200#3600
+    time_sec_limit= 600#1200#3600
+    ir_instead_restart = true
+    ir_type="matrix" #"matrix"#, 
     data_source = "MIPLIB" #"house_shaped"  #"MIPLIB" # 
     data_size = "instances_"*string(objective_tol)# Only relevant for miplib
     max_iter = 1000
     # cuPDLP_max_iter_IR = 1000
     save_IR_full_log = false
-    base_output_dir = "./output/PDHG_test34/"
+    base_output_dir = "./output/PDHG_test37/"
     # Parameter combinations
     kappas = [0.5, 0.99, 1] # [0.1, 0.5, 0.99,1] # , 0.5, 0.99, 1
     deltas = [1e-3, 1e-5, 1e-7, 1e-9, 1e-11] # [1e-3, 1]# , 1e-3, 1
@@ -59,15 +62,15 @@ function test()
 
     # solving method
     solving_methods = [
-        # # # "direct_cuPDLP",
-        "scalar_no_alpha",  
-        "direct_cuPDLP_IR",
-        "scalar", 
+        # "scalar_no_alpha",  
+        "direct_cuPDLP",
+        # "direct_cuPDLP_IR",
+        # "scalar", 
         # "D3_eq_D2_eq_I",         
-        "D2_D3_adaptive_v5",
-        "D2_D3_adaptive_v6",
-        "D2_D3_adaptive_v7",
-        "D2_D3_adaptive_v8",
+        # "D2_D3_adaptive_v5",
+        # "D2_D3_adaptive_v3", #v3 is v6
+        # "D2_D3_adaptive_v7",
+        # "D2_D3_adaptive_v8",
         
         # "D3_eq_D2_eq_I_indep",      # NEW NEW ONE
         # "D3_D2_iterative_swap",     
@@ -99,7 +102,6 @@ function test()
         "D123_pure_max"
     ]
 
-
     scaling_dict = Dict(
     # "direct_cuPDLP"=>"", # Does not need this
     "direct_cuPDLP_IR"=>"PDLP",
@@ -108,7 +110,7 @@ function test()
     "D3_eq_D2inv"=> "MD2_IR",    # D2 is f(l-x), and D3 = 1 ./D2
     "D3_eq_D2_eq_I"=> "MI_IR",   # D3 = D2 = I (only D1 scaling)
     "D3_eq_D2_eq_I_indep"=>"MIP_IR", # D3 = D2 = I (only D1 scaling), indep of alpha
-    "D3_dual_violation_swap"=>"DVSw_IR", # D3 is f(c-A'y), and D2 = 1 ./D3
+    "D3_dual_violation_swap"=>"DVSw_IR", # D3 is f(c-A"y), and D2 = 1 ./D3
     "D3_D2_iterative_swap"=>"D3D2Sw_IR", # even k=> D2 is f(l-x), and D3 = 1 ./D2 // odd k=> # D3 is f(c-A'y), and D2 = 1 ./D3
     "D3_D2_iterative_swap_indep"=>"D3D2SwP_IR", # even k=> D2 is f(l-x), and D3 = 1 ./D2 // odd k=> # D3 is f(c-A'y), and D2 = 1 ./D3
     "D3_D2_mix"=> "MIX_IR",       # D2 = min(1/d2 , d3, alpha*D2), and D3 = 1 ./D2 (Does this make sense??)
@@ -127,6 +129,25 @@ function test()
 
     if data_source == "MIPLIB"
         if data_size == "tiny_instances" || contains(data_size,"instances_")
+            # Hand-made
+            # 1. Fast instances where cuPDLP wins#["fhnw-schedule-pairb400", "ex10"]#["irish-electricity"]#
+            # instances =  ["adult-regularized"]#["bppc6-02", "glass4", "ns1456591" ] # ["2club200v15p5scn", "a2864-99blp", "ex10"]#, "ex1010-pi", "fhnw-schedule-pairb400", "fiball", "neos-1593097", "neos-2629914-sudost"]
+            
+            # New order of instances according to execution time <=600 + iterations >=1000
+            # Tiny (<160s)
+            # too large & infeasible: "neos-3229051-yass", "neos-3230511-yuna"
+            # too large & OOM: 
+            instances = ["neos-2629914-sudost", "sorrell4", "cdc7-4-3-2", "sorrell3", "sorrell7", "ns1904248", "neos-885524", "neos-3237086-abava", "neos-913984", "ns1856153", "genus-sym-g62-2", "neos-2991472-kalu", "dws012-02", "chromaticindex512-7", "chromaticindex1024-7", "fhnw-schedule-paira200", "fhnw-schedule-paira400", "neos-3759587-noosa", "ns1828997", "neos-5221106-oparau", "dws008-03", "dws012-03", "neos-5083528-gimone", "neos-5149806-wieprz", "fhnw-schedule-pairb200", "supportcase43", "graph40-20-1rand", "graph20-80-1rand", "neos-1171448", "ex9", "fhnw-schedule-pairb400", "ex10", "circ10-3", "neos-5195221-niemur", "neos-885086", "neos-5196530-nuhaka", "neos-956971", "neos-3755335-nizao", "neos-5193246-nerang", "graph40-40-1rand", "neos-933966", "dws012-01", "graphdraw-opmanager", "neos-525149", "neos-4409277-trave", "neos-932721", "2club200v15p5scn", "tanglegram4", "supportcase2", "neos-5188808-nattai", "neos-5049753-cuanza", "neos-4360552-sangro", "neos-2978205-isar", "neos-933638", "savsched1", "allcolor58", "neos-950242", "graph40-80-1rand", "neos9", "ns1111636", "ns1116954", "neos-957143", "neos-4300652-rahue", "neos-5118851-kowhai", "neos-4322846-ryton", "neos-5114902-kasavu", "seqsolve2short4288", "highschool1-aigio", "neos-5116085-kenana", "neos-578379", "n2seq36q", "neos-787933", "nursesched-sprint02", "neos-4355351-swalm", "neos-5106984-jizera", "kosova1", "neos-948346", "neos-4359986-taipa", "z26", "neos-1593097", "cryptanalysiskb128n5obj16", "fiball", "vpphard", "neos-738098", "neos-3740487-motru", "neos-4295773-pissa", "academictimetablesmall", "supportcase40", "n3div36", "neos-5079731-flyers", "ns1952667", "v150d30-2hopcds", "academictimetablebig", "neos-953928", "snip10x10-35r1budget17", "datt256", "neos-5076235-embley", "neos-3402294-bobin", "ns930473", "neos-3209462-rhin", "neos-5102383-irwell", "woodlands09", "neos-780889", "k1mushroom", "supportcase23", "neos-848589", "ns1830653", "nsrand-ipx", "n3seq24", "supportcase41", "neos-1367061", "in", "neos-5251015-ogosta", "roi5alpha10n8", "neos6", "ns2124243", "neos-5223573-tarwin", "neos-960392", "seqsolve1", "neos-5273874-yomtsa", "neos-5266653-tugela", "iis-hc-cov", "reblock420", "scpk4", "nursesched-sprint-hidden09", "ns1905797", "nursesched-sprint-late03", "map16715-04", "rmatr200-p10", "shipsched", "neos-3354841-apure", "neos-957323", "thor50dday", "neos-4321076-ruwer", "mushroom-best", "tbfp-network", "neos-1354092", "nucorsav", "gfd-schedulen180f7d50m30k18", "rocII-8-11", "splice1k1", "usafa", "eilC76-2", "neos-2746589-doon", "neos-941313", "supportcase39", "neos-3025225-shelon", "brazil3", "wnq-n100-mw99-14", "neos-3322547-alsek", "ex1010-pi", "neos-662469", "eva1aprime6x6opt", "bppc6-02", "dc1l", "ns2122698", "rocII-5-11", "neos-498623", "scpn2", "uccase8", "bppc6-06", "blp-ar98", "scpm1", "blp-ic98", "cmflsp50-24-8-8", "adult-regularized", "neos-1122047", "neos8", "supportcase12", "neos-4954274-beardy", "neos-4972437-bojana", "rmatr200-p5", "neos-4292145-piako", "seqsolve3short4288excess384", "blp-ic97", "t1722", "satellites2-40", "ns1456591", "neos-4647030-tutaki", "neos-826224", "ns1644855", "neos-860300", "hypothyroid-k1", "neos-4972461-bolong"]
+            # Small (<300s)
+            # instances = ["uccase7", "satellites2-25", "scpl4", "neos-4408804-prosna", "rail507", "neos-4647032-veleka", "neos-5129192-manaia", "sct5", "neos-4647027-thurso", "supportcase10", "cmflsp40-36-2-10", "neos-873061", "tpl-tub-ss16", "uccase9", "sp97ic", "neos-872648", "bab5", "ivu52", "ns1430538", "van", "satellites2-60-fs", "neos-3372571-onahau", "neos-5118834-korana", "neos-5108386-kalang", "rmine13", "opm2-z8-s0"]
+            # # Medium (<480)
+            # instances = ["neos-5052403-cygnet", "opm2-z10-s4", "pb-grow22", "piperout-d27", "ds", "neos-4976951-bunnoo", "cmflsp40-24-10-7", "t1717", "ger50-17-trans-dfn-3t", "adult-max5features", "fast0507", "sp97ar", "atlanta-ip", "neos-827175", "uccase12", "fhnw-binschedule2"]
+            # # Large (>= 480)
+            # instances = ["neos-4562542-watut", "square31", "neos-4724674-aorere", "s55", "neos-5104907-jarama", "neos-4555749-wards", "neos-5138690-middle", "stockholm", "s100", "ivu06", "s250r10", "sp98ic"]
+
+
+
+            # Original
             # 1. Tiny
             # instances = ["ns1830653", "neos-738098", "neos-578379", "ex1010-pi", "momentum1", "v150d30-2hopcds", "neos-950242", "supportcase40", "fiball", "2club200v15p5scn", "rmatr200-p10", "sct1", "ns1856153", "lr1dr04vc05v17a-t360", "neos-932721", "sct32", "30n20b8", "neos-827175", "rmatr200-p5", "neos-1593097", "neos-3372571-onahau", "ns1631475", "neos-4805882-barwon", "blp-ic97", "fhnw-schedule-paira200", "shipsched", "satellites2-60-fs", "neos-4359986-taipa", "unitcal_7", "cmflsp40-24-10-7", "neos-826224", "ci-s4", "leo1", "neos-1171448", "dws012-01", "t1722", "brazil3", "neos-5188808-nattai", "neos-5013590-toitoi", "mzzv11", "fhnw-binschedule2", "chromaticindex512-7", "supportcase37", "reblock420", "neos-824661", "neos-4954274-beardy", "iis-hc-cov", "ns930473", "sct5", "neos-498623", "mzzv42z", "neos-913984", "opm2-z8-s0", "gmut-76-40", "pb-grow22", "bab5", "physiciansched5-3", "sorrell7", "cmflsp50-24-8-8", "supportcase23", "eva1aprime6x6opt", "neos-1122047", "dws008-03", "neos-953928", "stockholm", "neos-5266653-tugela", "neos-5196530-nuhaka", "ger50-17-trans-dfn-3t", "ger50-17-trans-pop-3t", "germanrr", "neos-5193246-nerang", "neos-5195221-niemur", "ns1430538", "neos-933966", "bppc6-06", "n2seq36q", "neos-4300652-rahue", "neos-933638", "neos-1354092", "bppc6-02", "mushroom-best", "d20200", "neos-960392", "neos-4292145-piako", "ns1828997", "piperout-d20", "blp-ic98", "graph20-80-1rand", "app1-2", "ns1456591"]
             # 2. Small
@@ -134,21 +155,11 @@ function test()
             # 3. Medium
             # instances = ["scpk4", "sorrell4", "ds-big", "seqsolve1", "seqsolve2short4288", "seqsolve3short4288excess384", "supportcase43", "shs1023", "shs1014", "physiciansched3-3", "neos-5076235-embley", "neos-5079731-flyers", "neos-848589", "shs1042", "ex10", "fhnw-schedule-pairb400", "sing17", "neos-5102383-irwell", "gfd-schedulen180f7d50m30k18", "neos-4533806-waima", "graph40-40-1rand", "neos-4555749-wards", "neos-4321076-ruwer", "bab6", "s250r10", "wnq-n100-mw99-14", "neos-5041822-cockle", "fhnw-binschedule0", "neos-5049753-cuanza", "neos-4972461-bolong", "datt256", "neos-525149", "academictimetablebig", "highschool1-aigio", "pb-fit2d", "neos-5129192-manaia", "zeil", "k1mushroom", "z26", "neos-4972437-bojana", "neos-4976951-bunnoo", "hgms62", "splice1k1", "savsched1", "s100", "ns1760995", "neos-5273874-yomtsa", "neos-5251015-ogosta", "co-100", "scpl4", "neos-3322547-alsek", "neos-4562542-watut", "bab2", "neos-3402294-bobin", "neos-5104907-jarama", "ns1644855", "neos-5223573-tarwin", "ivu52", "supportcase12", "roi5alpha10n8", "woodlands09", "neos-5106984-jizera", "neos-5118834-korana", "supportcase7", "neos-5116085-kenana", "n3seq24", "bab3", "neos-5138690-middle", "kosova1", "rmine21", "neos-5108386-kalang", "neos-5118851-kowhai", "graph40-80-1rand", "tpl-tub-ss16", "neos-5123665-limmat", "square31", "neos-4647027-thurso", "neos-4647030-tutaki", "neos-4647032-veleka", "neos-5114902-kasavu", "supportcase19", "rwth-timetable", "ds", "tpl-tub-ws1617", "neos-5052403-cygnet", "neos-3354841-apure", "scpm1", "in", "rmine25", "supportcase2", "ivu06", "fhnw-binschedule1", "neos-3025225-shelon", "square37"]
             # 4. Large
-            instances = ["neos-4545615-waita", "scpn2", "kottenpark09", "square41", "neos-2991472-kalu", "usafa", "dlr1", "a2864-99blp", "ivu06-big", "neos-3208254-reiu", "nucorsav", "neos-3740487-motru", "square47", "ivu59", "t11nonreg", "neos-4332801-seret", "neos-4332810-sesia", "neos-3229051-yass", "neos-3230511-yuna", "neos-4535459-waipa"]
+            # instances = ["neos-4545615-waita", "scpn2", "kottenpark09", "square41", "neos-2991472-kalu", "usafa", "dlr1", "a2864-99blp", "ivu06-big", "neos-3208254-reiu", "nucorsav", "neos-3740487-motru", "square47", "ivu59", "t11nonreg", "neos-4332801-seret", "neos-4332810-sesia", "neos-3229051-yass", "neos-3230511-yuna", "neos-4535459-waipa"]
             # Convergent instances
             # instances = ["ns1456591"] #["glass4", 
             # Nonconvergent instances
             # instances = ["irish-electricity"]
-            # Mix
-            #["glass4","irish-electricity"]#["irish-electricity", "lr1dr12vc10v70b-t360", "lr2-22dr3-333vc4v17a-t60", "map06", "map10", "map18", "neos-4391920-timok", "proteindesign121pgb11p9", "dlr1", "neos-4332801-seret"] # Instances that fail to converge on certain tolerance
-            # I was testing on ["ns1828997", "ns1456591", "app1-2", "neos-1354092", "bppc6-02", "blp-ic98"]#["ns1828997", "neos-4292145-piako"]#["neos-4292145-piako"] # Single instance to analize 
-                    # MIPLIB_instances = ["ns1456591", "app1-2", "graph20-80-1rand", "blp-ic98", "piperout-d20", "ns1828997", "neos-4292145-piako", "neos-960392", "d20200", "mushroom-best",  # Estan todos
-            # MIPLIB_instances = ["bppc6-02", "neos-1354092", "neos-933638", "neos-4300652-rahue", "n2seq36q", "bppc6-06", "neos-933966", "ns1430538"] # Faltan algunos
-            # 30 mins:
-            #  "neos-5195221-niemur", "neos-5193246-nerang",
-            # 10 mins:
-            # MIPLIB_instances = ["germanrr", "ger50-17-trans-dfn-3t", "ger50-17-trans-pop-3t", "neos-5196530-nuhaka", "neos-5266653-tugela", "stockholm", "neos-953928", "dws008-03", "neos-1122047", "eva1aprime6x6opt", "supportcase23", "cmflsp50-24-8-8", "sorrell7", "physiciansched5-3", "bab5", "pb-grow22", "gmut-76-40", "opm2-z8-s0", "neos-913984", "mzzv42z", "neos-498623", "sct5", "ns930473", "iis-hc-cov", "neos-4954274-beardy", "neos-824661", "reblock420", "supportcase37", "chromaticindex512-7", "fhnw-binschedule2", "mzzv11", "neos-5013590-toitoi", "neos-5188808-nattai", "brazil3", "t1722", "dws012-01", "neos-1171448", "leo1", "ci-s4", "neos-826224", "cmflsp40-24-10-7", "unitcal_7", "neos-4359986-taipa", "satellites2-60-fs", "shipsched", "fhnw-schedule-paira200", "blp-ic97", "neos-4805882-barwon", "ns1631475", "neos-3372571-onahau", "neos-1593097", "rmatr200-p5", "neos-827175", "30n20b8", "sct32", "neos-932721", "lr1dr04vc05v17a-t360", "ns1856153", "sct1", "rmatr200-p10", "2club200v15p5scn", "fiball", "supportcase40", "neos-950242", "v150d30-2hopcds", "momentum1", "ex1010-pi", "neos-578379", "neos-738098", "ns1830653"] # Falta todo
-            # MIPLIB_instances ="ns1430538"
 
             instance_path = "/nfs/sloanlab007/projects/pdopt_proj/instances/lp/miplib2017/"
             output_dir = base_output_dir*"MIPLIB_test/"*data_size
@@ -186,6 +197,9 @@ function test()
 
     # Loop over the instances
     for (i,instance_name) in enumerate(instances)
+
+        println("\nINSTANCE: "*instance_name*"\n")
+
         if data_source == "MIPLIB"
             instance_dir = instance_path * instance_name * ".mps.gz"
         elseif data_source == "house_shaped"
@@ -199,6 +213,9 @@ function test()
         end
 
         for solving_method in solving_methods
+
+
+            println("\n SOLVING METHOD: "*solving_method*"\n")
 
             # SKIP if scalar-no-alpha
             if solving_method == "scalar_no_alpha" 
@@ -241,7 +258,7 @@ function test()
                     # println(output_dir_instance) 
                     # println(objective_tol) 
                     # println(time_sec_limit)
-                    main(instance_dir, output_dir_instance, objective_tol, time_sec_limit)
+                    main(instance_dir, output_dir_instance, objective_tol, time_sec_limit, ir_instead_restart, ir_type) # NEW VERSION
                     println("Solved the .log files of direct method PDLP")
                     # exit()
                 else
@@ -306,7 +323,10 @@ function test()
 
                 end
 
-            end 
+            end
+            
+            
+
         end
     end
 end

@@ -88,7 +88,7 @@ function pdhg_specific_log(
 end
 
 function pdhg_final_log(
-    problem::QuadraticProgrammingProblem,
+    problem::Union{QuadraticProgrammingProblem, CuQuadraticProgrammingProblem},
     avg_primal_solution::Vector{Float64},
     avg_dual_solution::Vector{Float64},
     verbosity::Int64,
@@ -456,20 +456,60 @@ Main algorithm: given parameters and LP problem, return solutions
 """
 function optimize(
     params::PdhgParameters,
-    original_problem::QuadraticProgrammingProblem,
+    original_problem::Union{QuadraticProgrammingProblem, CuQuadraticProgrammingProblem},
+    # initial_solver_state::Any = nothing # ::Union{CuPdhgSolverState, Nothing} = nothing # MINE
     ir_instead_average::Bool=false,
-)
-    validate(original_problem)
+    ir_type::String="scalar",
+    # lp_original_problem::Any=nothing,
+    init_primal_dual_solution::Any = nothing,
+    init_problem_params::Any = nothing,
+    )
+
+    # # Skip preporcessing if GPU
+    # println("Type of the problem", typeof(original_problem))
+    # println("Is a cuquad", isa(original_problem, CuQuadraticProgrammingProblem))
+    # flush(stdout)
+
+    # GPU Checked: We already know is valid if CuQuadratic
+    if !isa(original_problem, CuQuadraticProgrammingProblem)
+        validate(original_problem) 
+    end
+    # GPU Checked: Cache is calculating norms with norm/CUDA.norm functions accordingly
     qp_cache = cached_quadratic_program_info(original_problem)
 
+    # @info "original problem (init)"
+    # @info CUDA.norm(original_problem.constraint_matrix, 2)
+    # @info CUDA.norm(original_problem.objective_matrix, 2)
+    # @info CUDA.norm(original_problem.right_hand_side, 2)
+    
+
     start_rescaling_time = time()
-    scaled_problem = rescale_problem(
-        params.l_inf_ruiz_iterations,
-        params.l2_norm_rescaling,
-        params.pock_chambolle_alpha,
-        params.verbosity,
-        original_problem,
-    )
+    # GPU Checked: same results for both scalings 
+    if !isa(original_problem, CuQuadraticProgrammingProblem)
+        scaled_problem = rescale_problem(
+            params.l_inf_ruiz_iterations,
+            params.l2_norm_rescaling,
+            params.pock_chambolle_alpha,
+            params.verbosity,
+            original_problem,
+        )
+    else 
+        scaled_problem = no_rescale_problem(
+        # scaled_problem = rescale_problem(
+            params.l_inf_ruiz_iterations,
+            params.l2_norm_rescaling,
+            params.pock_chambolle_alpha,
+            params.verbosity,
+            original_problem,
+        )
+    end
+    
+    # @info "Scaled problem"
+    # @info CUDA.norm(scaled_problem.scaled_qp.constraint_matrix, 2)
+    # @info CUDA.norm(scaled_problem.scaled_qp.objective_matrix, 2)
+    # @info CUDA.norm(scaled_problem.scaled_qp.right_hand_side, 2)
+    
+
     rescaling_time = time() - start_rescaling_time
     Printf.@printf(
         "Preconditioning Time (seconds): %.2e\n",
@@ -483,47 +523,132 @@ function optimize(
         error("primal_importance must be positive and finite")
     end
 
-    # transfer from cpu to gpu
+    # GPU Checked: transforms qp to lp in most of parts, and also GPU if necessary
     d_scaled_problem = scaledqp_cpu_to_gpu(scaled_problem)
     d_problem = d_scaled_problem.scaled_qp
     buffer_lp = qp_cpu_to_gpu(original_problem)
 
+    # @info "\n// Rescaled problem CPU-GPU thing //"
+    # @info CUDA.norm(d_problem.constraint_matrix, 2)
+    # # @info CUDA.norm(d_problem.objective_matrix, 2)
+    # @info CUDA.norm(d_problem.right_hand_side, 2)
+    # @info CUDA.norm(buffer_lp.constraint_matrix, 2)
+    # # @info CUDA.norm(buffer_lp.objective_matrix, 2)
+    # @info CUDA.norm(buffer_lp.right_hand_side, 2)
 
-    # initialization
-    solver_state = CuPdhgSolverState(
-        CUDA.zeros(Float64, primal_size),    # current_primal_solution
-        CUDA.zeros(Float64, dual_size),      # current_dual_solution
-        CUDA.zeros(Float64, dual_size),      # current_primal_product
-        CUDA.zeros(Float64, primal_size),    # current_dual_product
-        initialize_solution_weighted_average(primal_size, dual_size),
-        0.0,                 # step_size
-        1.0,                 # primal_weight
-        false,               # numerical_error
-        0.0,                 # cumulative_kkt_passes
-        0,                   # total_number_iterations
-        nothing,
-        nothing,
-    )
 
-    buffer_state = CuBufferState(
-        CUDA.zeros(Float64, primal_size),      # delta_primal
-        CUDA.zeros(Float64, dual_size),        # delta_dual
-        CUDA.zeros(Float64, dual_size),        # delta_primal_product
-    )
+    # initialization 
+    # MINE: Condition for a fist solver state
+    if isnothing(init_primal_dual_solution)
+        solver_state = CuPdhgSolverState(
+            CUDA.zeros(Float64, primal_size),    # current_primal_solution
+            CUDA.zeros(Float64, dual_size),      # current_dual_solution
+            CUDA.zeros(Float64, dual_size),      # current_primal_product
+            CUDA.zeros(Float64, primal_size),    # current_dual_product
+            initialize_solution_weighted_average(primal_size, dual_size),
+            0.0,                 # step_size
+            1.0,                 # primal_weight
+            false,               # numerical_error
+            0.0,                 # cumulative_kkt_passes
+            0,                   # total_number_iterations
+            nothing,
+            nothing,
+        )
 
-    buffer_avg = CuBufferAvgState(
-        CUDA.zeros(Float64, primal_size),      # avg_primal_solution
-        CUDA.zeros(Float64, dual_size),        # avg_dual_solution
-        CUDA.zeros(Float64, dual_size),        # avg_primal_product
-        CUDA.zeros(Float64, primal_size),      # avg_primal_gradient
-    )
+        buffer_state = CuBufferState(
+            CUDA.zeros(Float64, primal_size),             # delta_primal (Is primal - step_size/primal_weight*etc)
+            CUDA.zeros(Float64, dual_size),     # delta_dual
+            CUDA.zeros(Float64, dual_size),     # delta_primal_product
+        )
 
-    buffer_original = BufferOriginalSol(
-        CUDA.zeros(Float64, primal_size),      # primal
-        CUDA.zeros(Float64, dual_size),        # dual
-        CUDA.zeros(Float64, dual_size),        # primal_product
-        CUDA.zeros(Float64, primal_size),      # primal_gradient
-    )
+        buffer_avg = CuBufferAvgState(
+            CUDA.zeros(Float64, primal_size),      # avg_primal_solution
+            CUDA.zeros(Float64, dual_size),        # avg_dual_solution
+            CUDA.zeros(Float64, dual_size),        # avg_primal_product
+            CUDA.zeros(Float64, primal_size),      # avg_primal_gradient
+        )
+
+        buffer_original = BufferOriginalSol(
+            CUDA.zeros(Float64, primal_size),      # primal
+            CUDA.zeros(Float64, dual_size),        # dual
+            CUDA.zeros(Float64, dual_size),        # primal_product
+            CUDA.zeros(Float64, primal_size),      # primal_gradient
+        )
+
+    else # MINE: If it is an array (SKIP IN GPU VERSION)
+        # Original values
+        i=0
+        i+=1
+        print("I got here "*string(i))
+        x_k, y_k = init_primal_dual_solution
+        x_k, y_k = (CuVector{Float64}(x_k), CuVector{Float64}(y_k))
+        A,b,c,l,u = init_problem_params
+        # Scaled problem values
+        # println(typeof(x_k))
+        # println(typeof(y_k))
+        # println(typeof(d_scaled_problem.variable_rescaling))
+        # println(typeof(d_scaled_problem.constraint_rescaling))
+        # (x_k .* d_scaled_problem.variable_rescaling), (y_k .* d_scaled_problem.constraint_rescaling) = (
+        #     x_k .* d_scaled_problem.variable_rescaling, 
+        #     y_k .* d_scaled_problem.constraint_rescaling
+        # )
+        # d_problem.constraint_matrix, d_problem.variable_lower_bound, d_problem.variable_upper_bound = (
+        #     d_problem.constraint_matrix,
+        #     d_problem.right_hand_side,
+        #     d_problem.objective_vector,
+        #     d_problem.variable_lower_bound,
+        #     d_problem.variable_upper_bound
+        # )
+
+        i+=1
+        print("I got here "*string(i))
+        primal_size, dual_size = (length(x_k), length(y_k))
+        i+=1
+        print("I got here "*string(i))
+        solver_state = CuPdhgSolverState(
+            (x_k .* d_scaled_problem.variable_rescaling),#CuVector{Float64}((x_k .* d_scaled_problem.variable_rescaling)),     #   current_primal_solution
+            (y_k .* d_scaled_problem.constraint_rescaling),#CuVector{Float64}((y_k .* d_scaled_problem.constraint_rescaling)),     #   current_dual_solution
+            d_problem.constraint_matrix * (x_k .* d_scaled_problem.variable_rescaling), #CuVector{Float64}(d_problem.constraint_matrix * (x_k .* d_scaled_problem.variable_rescaling)),   #   current_primal_product
+            d_problem.constraint_matrix' * (y_k .* d_scaled_problem.constraint_rescaling), #CuVector{Float64}(d_problem.constraint_matrix' * (y_k .* d_scaled_problem.constraint_rescaling)),  #   current_dual_product
+            initialize_solution_weighted_average(primal_size, dual_size), # This is computed later if 0 apparently
+            0.0,                 # step_size
+            1.0,                 # primal_weight
+            false,               # numerical_error
+            0.0,                 # cumulative_kkt_passes
+            0,                   # total_number_iterations
+            nothing,
+            nothing,
+        ) 
+        i+=1
+        print("I got here "*string(i))
+        buffer_state = CuBufferState(
+            CuVector{Float64}( min.(d_problem.variable_upper_bound, max.(d_problem.variable_lower_bound, (x_k .* d_scaled_problem.variable_rescaling))) - (x_k .* d_scaled_problem.variable_rescaling) ),    # delta_primal (Is primal - step_size/primal_weight*etc inside of the max)
+            CuVector{Float64}( (y_k .* d_scaled_problem.constraint_rescaling) - (y_k .* d_scaled_problem.constraint_rescaling) ),    # delta_dual (similar to primal idea)
+            CUDA.zeros(Float64, dual_size),     # delta_primal_product (probably something like zero for init)
+        )
+        i+=1
+        print("I got here "*string(i))
+        buffer_avg = CuBufferAvgState(
+            CuVector{Float64}((x_k .* d_scaled_problem.variable_rescaling)),      # avg_primal_solution
+            CuVector{Float64}((y_k .* d_scaled_problem.constraint_rescaling)),        # avg_dual_solution
+            CuVector{Float64}(d_problem.constraint_matrix*(x_k .* d_scaled_problem.variable_rescaling)),        # avg_primal_product
+            CuVector{Float64}(d_problem.objective_vector - d_problem.constraint_matrix' *(y_k .* d_scaled_problem.constraint_rescaling)),      # avg_primal_gradient
+        )
+        i+=1
+        println("I got here "*string(i))
+        println(typeof(A))
+        println(typeof(CUDA.CUSPARSE.CuSparseMatrixCSR(A)))
+        # x_k, y_k = init_primal_dual_solution # recover non-CuVector for operations
+        buffer_original = BufferOriginalSol(
+            x_k,      # primal
+            y_k,        # dual
+            CUDA.CUSPARSE.CuSparseMatrixCSR(A)*x_k,        # primal_product
+            (CuVector{Float64}(c)-CUDA.CUSPARSE.CuSparseMatrixCSR(A)'*y_k),      # primal_gradient
+        )
+
+        i+=1
+        print("I got here "*string(i))
+    end
 
     buffer_kkt = BufferKKTState(
         buffer_original.original_primal_solution,      # primal
@@ -625,7 +750,7 @@ function optimize(
 
         if mod(iteration - 1, termination_evaluation_frequency) == 0 ||
             iteration == iteration_limit + 1 ||
-            iteration <= 10 ||
+            iteration <= 100 || # Limit of saving info (?) (MINE: changed the <= 10 limit to a diff value)
             solver_state.numerical_error
             
             solver_state.cumulative_kkt_passes += KKT_PASSES_PER_TERMINATION_EVALUATION
@@ -663,6 +788,41 @@ function optimize(
                 buffer_kkt_infeas,
                 buffer_lp,
             )
+            # if iteration == 1052 #|| iteration == 13
+            #     println("Iter "*string(iteration))
+            #     println("norm of primal sol:")
+            #     println(CUDA.norm(solver_state.current_primal_solution))
+            #     println("norm of dual sol:")
+            #     println(CUDA.norm(solver_state.current_dual_solution))
+            #     println("relative KKT values from cuPDLP:")
+            #     println(current_iteration_stats.convergence_information[1].relative_l_inf_primal_residual)
+            #     println(current_iteration_stats.convergence_information[1].relative_l_inf_dual_residual)
+            #     println(current_iteration_stats.convergence_information[1].relative_optimality_gap)
+            #     println("KKT normal:")
+            #     println(norm([
+            #         current_iteration_stats.convergence_information[1].l_inf_primal_residual,
+            #         current_iteration_stats.convergence_information[1].l_inf_dual_residual,
+            #         current_iteration_stats.convergence_information[1].primal_objective - current_iteration_stats.convergence_information[1].dual_objective,
+            #     ],1))
+            #     # exit()
+            # elseif iteration == 1051 #|| iteration == 12
+            #     println("Iter "*string(iteration))
+            #     println("norm of primal sol:")
+            #     println(CUDA.norm(solver_state.current_primal_solution))
+            #     println("norm of dual sol:")
+            #     println(CUDA.norm(solver_state.current_dual_solution))
+            #     println("relative KKT values from cuPDLP:")
+            #     println(current_iteration_stats.convergence_information[1].relative_l_inf_primal_residual)
+            #     println(current_iteration_stats.convergence_information[1].relative_l_inf_dual_residual)
+            #     println(current_iteration_stats.convergence_information[1].relative_optimality_gap)  
+            #     println("KKT normal:")
+            #     println(norm([
+            #         current_iteration_stats.convergence_information[1].l_inf_primal_residual,
+            #         current_iteration_stats.convergence_information[1].l_inf_dual_residual,
+            #         current_iteration_stats.convergence_information[1].primal_objective - current_iteration_stats.convergence_information[1].dual_objective,
+            #     ],1))
+            # end
+
             method_specific_stats = current_iteration_stats.method_specific_stats
             method_specific_stats["time_spent_doing_basic_algorithm"] =
                 time_spent_doing_basic_algorithm
@@ -709,24 +869,41 @@ function optimize(
                 # This is the only place the algorithm can terminate. Please keep it this way.
                 
                 # GPU to CPU
-                avg_primal_solution = zeros(primal_size)
-                avg_dual_solution = zeros(dual_size)
-                gpu_to_cpu!(
-                    buffer_avg.avg_primal_solution,
-                    buffer_avg.avg_dual_solution,
-                    avg_primal_solution,
-                    avg_dual_solution,
-                )
+                if isa(original_problem, QuadraticProgrammingProblem)
+                    avg_primal_solution = zeros(primal_size)
+                    avg_dual_solution = zeros(dual_size)
+                    gpu_to_cpu!(
+                        buffer_avg.avg_primal_solution,
+                        buffer_avg.avg_dual_solution,
+                        avg_primal_solution,
+                        avg_dual_solution,
+                    )
 
-                pdhg_final_log(
-                    scaled_problem.scaled_qp,
-                    avg_primal_solution,
-                    avg_dual_solution,
-                    params.verbosity,
-                    iteration,
-                    termination_reason,
-                    current_iteration_stats,
-                )
+                    pdhg_final_log(
+                        scaled_problem.scaled_qp,
+                        avg_primal_solution,
+                        avg_dual_solution,
+                        params.verbosity,
+                        iteration,
+                        termination_reason,
+                        current_iteration_stats,
+                    )
+                elseif isa(original_problem, CuQuadraticProgrammingProblem)
+                    # Keep it GPU
+                    avg_primal_solution = buffer_avg.avg_primal_solution
+                    avg_dual_solution = buffer_avg.avg_dual_solution
+
+
+                    # pdhg_final_log(
+                    #     scaled_problem.scaled_qp,
+                    #     avg_primal_solution,
+                    #     avg_dual_solution,
+                    #     params.verbosity,
+                    #     iteration,
+                    #     termination_reason,
+                    #     current_iteration_stats,
+                    # )
+                end
 
                 return unscaled_saddle_point_output(
                     scaled_problem,
@@ -740,6 +917,7 @@ function optimize(
 
             buffer_primal_gradient .= d_scaled_problem.scaled_qp.objective_vector .- solver_state.current_dual_product
 
+            prev_last_restart_info = deepcopy(last_restart_info)
 
             current_iteration_stats.restart_used = run_restart_scheme(
                 d_scaled_problem.scaled_qp,
@@ -759,9 +937,25 @@ function optimize(
                 buffer_kkt,
                 buffer_primal_gradient,
                 #Mine
+                qp_cache,
+                iteration, # PDGH iteration
                 params.termination_criteria,
                 ir_instead_average,    # IR instead of restart
+                ir_type,
             )
+
+            # if last_restart_info.ir_refinement_applied
+            #     if last_restart_info.ir_refinements_number - prev_last_restart_info.ir_refinements_number == 1
+            #         println("FIRST cuPDLP output after IR:")
+            #         # println("Iter "*string(iteration))
+            #         println("norm of primal sol:")
+            #         println(CUDA.norm(last_restart_info.primal_solution))
+            #         println("norm of dual sol:")
+            #         println(CUDA.norm(last_restart_info.dual_solution))
+            #         println("KKT values from last_restart_info:")
+            #         println(last_restart_info.last_restart_kkt_residual)  
+            #     end
+            # end
 
             if current_iteration_stats.restart_used != RESTART_CHOICE_NO_RESTART
                 solver_state.primal_weight = compute_new_primal_weight(
@@ -775,7 +969,7 @@ function optimize(
         end
 
         time_spent_doing_basic_algorithm_checkpoint = time()
-      
+
         if params.verbosity >= 6 && print_to_screen_this_iteration(
             false, # termination_reason
             iteration,
@@ -793,7 +987,22 @@ function optimize(
             )
           end
 
-        take_step!(params.step_size_policy_params, d_problem, solver_state, buffer_state)
+        if !last_restart_info.ir_refinement_applied || last_restart_info.ir_refinements_number - prev_last_restart_info.ir_refinements_number != 1
+            take_step!(params.step_size_policy_params, d_problem, solver_state, buffer_state)
+        end
+
+        # if last_restart_info.ir_refinement_applied
+        #     if last_restart_info.ir_refinements_number - prev_last_restart_info.ir_refinements_number == 1
+        #         println("FOURTH cuPDLP output after IR:")
+        #         # println("Iter "*string(iteration))
+        #         println("norm of primal sol:")
+        #         println(CUDA.norm(solver_state.current_primal_solution))
+        #         println("norm of dual sol:")
+        #         println(CUDA.norm(solver_state.current_dual_solution))
+        #         # println("KKT values from last_restart_info:")
+        #         # println(last_restart_info.last_restart_kkt_residual)  
+        #     end
+        # end
 
         time_spent_doing_basic_algorithm += time() - time_spent_doing_basic_algorithm_checkpoint
     end
