@@ -773,19 +773,32 @@ function no_rescale_problem(
   l2_norm_rescaling_flag::Bool,
   pock_chambolle_alpha::Union{Float64,Nothing},
   verbosity::Int64,
-  original_problem::CuQuadraticProgrammingProblem,
+  original_problem::Union{CuQuadraticProgrammingProblem, QuadraticProgrammingProblem},
   )
 
   num_constraints, num_variables = size(original_problem.constraint_matrix)
-  constraint_rescaling = CUDA.ones(num_constraints)
-  variable_rescaling = CUDA.ones(num_variables)
+  if original_problem isa CuQuadraticProgrammingProblem
+    constraint_rescaling = CUDA.ones(num_constraints)
+    variable_rescaling = CUDA.ones(num_variables)
 
-  unscaled_problem = CuScaledQpProblem(
-    original_problem,
-    original_problem,
-    constraint_rescaling,
-    variable_rescaling,
-  )
+    unscaled_problem = CuScaledQpProblem(
+      original_problem,
+      original_problem,
+      constraint_rescaling,
+      variable_rescaling,
+    )
+  
+  elseif original_problem isa QuadraticProgrammingProblem
+    constraint_rescaling = ones(num_constraints)
+    variable_rescaling = ones(num_variables)
+
+    unscaled_problem = ScaledQpProblem(
+      original_problem,
+      original_problem,
+      constraint_rescaling,
+      variable_rescaling,
+    )
+  end
 
   return unscaled_problem
 end

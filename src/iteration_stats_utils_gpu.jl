@@ -305,6 +305,13 @@ function compute_convergence_information(
 
     convergence_info.candidate_type = candidate_type
 
+    # @info "#######################"
+    # @info "### KKT rel computation ###"
+    # @info convergence_info.relative_l_inf_primal_residual
+    # @info convergence_info.relative_l_inf_dual_residual
+    # @info convergence_info.relative_optimality_gap
+    # @info "#######################"
+
     return convergence_info
 end
 

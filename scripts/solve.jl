@@ -2,6 +2,9 @@ import ArgParse
 import GZip
 import JSON3
 
+# MINE
+using NPZ
+
 # import cuPDLP
 include("/nfs/home2/nacevedo/RA/cuPDLP.jl/src/cuPDLP.jl")
 
@@ -77,6 +80,45 @@ function solve_instance_and_output(
     
         dual_output_path = joinpath(output_dir, instance_name * "_dual.txt")
         write_vector_to_file(dual_output_path, output.dual_solution)
+
+        @info "Saved all the others. Now saving my iterates..."
+
+        # @info "primal iterates", output.primal_dual_iterates[1]
+        primal_iterates = output.primal_dual_iterates[1]#zeros(size(output.primal_dual_iterates[1])) 
+        # copyto!(primal_iterates, output.primal_dual_iterates[1])
+        # @info "primal iterates 2", primal_iterates
+        dual_iterates = output.primal_dual_iterates[2]
+        # @info "4",output.primal_dual_iterates[4]
+        # @info "5",output.primal_dual_iterates[5]
+        pdhg_behavior = Dict(
+            "primal_iterates_sample"=>primal_iterates,
+            "dual_iterates_sample"=>dual_iterates,
+            "primal_near_bounds_number"=>output.primal_dual_iterates[3],
+            "primal_iterates_magnitudes"=>output.primal_dual_iterates[4],
+            "primal_iterates_cosines"=>output.primal_dual_iterates[5],
+            
+        )
+        # @info "pdhg behavior"
+        # @info pdhg_behavior
+        # primal_iterates_path = joinpath(output_dir, instance_name * "_primal_iterates.txt")
+        # write_vector_to_file(primal_iterates_path, output.primal_dual_iterates[1])
+        
+        # dual_iterates_path = joinpath(output_dir, instance_name * "_dual_iterates.txt")
+        # write_vector_to_file(dual_iterates_path, output.primal_dual_iterates[2])
+
+        pdhg_behavior_path = joinpath(output_dir, instance_name * "_pdhg_behavior.json")
+        open(pdhg_behavior_path, "w") do f
+            JSON3.write(f, pdhg_behavior)
+            println(f) # Add a newline for better readability
+        end
+
+        # write_vector_to_file(pdhg_behavior_path, JSON3.write(pdhg_behavior, allow_inf = true))
+        
+
+
+        
+        @info "Done saving my iterates :)"
+        # @info "See primal iterates on "*primal_iterates_path
     end     
 
     inner_solve()

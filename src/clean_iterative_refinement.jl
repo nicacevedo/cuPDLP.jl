@@ -66,6 +66,94 @@ function cu_quad_to_quad_matrix(A_gpu::CUDA.CUSPARSE.CuSparseMatrixCSR)
     )'
 end
 
+# Triple matrix multiplication on CUDA
+function triple_cudaMM(
+    D1::CUDA.CUSPARSE.CuSparseMatrixCSR,
+    A::CUDA.CUSPARSE.CuSparseMatrixCSR,
+    D2::CUDA.CUSPARSE.CuSparseMatrixCSR,
+)
+    A_copy = deepcopy(A) # Copy: maybe erase it
+    CUDA.CUSPARSE.gemm!(
+             'N',   # 1st matrix is not transpose
+             'N',   # 2nd matrix is not transpose
+             1,     # 1*A*B
+             D1, # A
+             A_copy,     # B
+             0,                            
+             A_copy,     # C
+             'O',   # Secret
+        # CUDA.CUSPARSE.CUSPARSE_SPMM_CSR_ALG2, # determinstic algorithm(?)
+        ) 
+    CUDA.CUSPARSE.gemm!(
+             'N',   # 1st matrix is not transpose
+             'N',   # 2nd matrix is not transpose
+             1,     # 1*A*B
+             A_copy, # A
+             D2,     # B
+             0,                            
+             A_copy,     # C
+             'O',   # Secret
+        ) 
+    return A_copy
+end
+
+# Matrix-vector multiplication on CUDA
+    # CUDA.CUSPARSE.mv!('N', 1, problem.constraint_matrix, delta_primal, 0, delta_primal_product, 'O', CUDA.CUSPARSE.CUSPARSE_SPMV_CSR_ALG2)
+    # algo 2 is deterministic / algo 1 is random
+function cudaMV(
+    A::CUDA.CUSPARSE.CuSparseMatrixCSR,
+    x::CuVector,
+)
+    v = CuVector{Float64}(CUDA.zeros(size(A)[1]))
+    CUDA.CUSPARSE.mv!(
+        'N', 
+        1, 
+        A, 
+        x, 
+        0, 
+        v, 
+        'O', 
+        CUDA.CUSPARSE.CUSPARSE_SPMV_CSR_ALG2
+    )
+    return v
+end
+
+
+"""
+    gpu_transpose_csr(A::CuSparseMatrixCSR)
+
+Transpose a CuSparseMatrixCSR on the GPU, returning the result as a new CuSparseMatrixCSR.
+No CPU communication is performed.
+"""
+function gpu_transpose_csr(A::CUDA.CUSPARSE.CuSparseMatrixCSR)
+    m, n = size(A)
+    nnz = A.nnz
+    T = eltype(A)
+
+    # Allocate output arrays for the CSC representation (which is the transpose in CSR)
+    d_cscVal = similar(A.nzVal, nnz)
+    d_cscRowInd = similar(A.rowPtr, nnz)
+    d_cscColPtr = similar(A.colVal, n + 1)
+
+    # Perform CSR to CSC conversion (which is equivalent to transposing)
+    CUDA.CUSPARSE.csr2csc!(
+        m, n, nnz,
+        A.nzVal, A.rowPtr, A.colVal,
+        d_cscVal, d_cscColPtr, d_cscRowInd,
+        CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ONE
+    )
+
+    # Construct the transposed matrix in CSR format (by reinterpreting CSC as CSR)
+    # Note: rowptr <-> colptr, colind <-> rowind
+    return CUDA.CUSPARSE.CuSparseMatrixCSR(
+        d_cscVal,
+        d_cscColPtr,   # now rowptr for the transposed matrix
+        d_cscRowInd,   # now colind for the transposed matrix
+        n, m           # note the swapped dimensions
+    )
+end
+
+
 # mutable struct QuadraticProgrammingProblem
 #     """
 #     The vector of variable lower bounds.
@@ -158,8 +246,8 @@ function LP_to_quasi_standard_form(lp::Union{QuadraticProgrammingProblem, CuLine
             -I
             ]
         # print("\nType of the A matrix: \n", typeof([A Z_I]))
-        A =  CUDA.CUSPARSE.CuSparseMatrixCSR([A Z_I]) #hcat(A, I)
-        A_t =  CUDA.CUSPARSE.CuSparseMatrixCSR([A Z_I]')
+        A_t = CUDA.CUSPARSE.CuSparseMatrixCSR([A Z_I]') # this one first!!
+        A =  CUDA.CUSPARSE.CuSparseMatrixCSR([A Z_I]) 
 
         # Add slack variables to the objective function
         c = lp.objective_vector
@@ -262,8 +350,8 @@ function compute_current_KKT(
         CuVector{Float64}(current_dual_solution),#    dual_iterate::CuVector{Float64},
         1.0, #          eps_ratio::Float64,
         cuPDLP.POINT_TYPE_AVERAGE_ITERATE,# candidate_type::PointType,
-        CuVector{Float64}(lp.constraint_matrix*current_primal_solution),#      primal_product::CuVector{Float64},
-        CuVector{Float64}(lp.objective_vector - lp.constraint_matrix'*current_dual_solution),#  primal_gradient::CuVector{Float64},
+        CuVector{Float64}(cudaMV(lp.constraint_matrix,current_primal_solution)),#      primal_product::CuVector{Float64},
+        CuVector{Float64}(lp.objective_vector - cudaMV(CUDA.CUSPARSE.CuSparseMatrixCSR(lp.constraint_matrix'),current_dual_solution)),#  primal_gradient::CuVector{Float64},
         buffer_kkt  #   buffer_kkt::BufferKKTState,
     )
 
@@ -272,12 +360,12 @@ function compute_current_KKT(
         convergence_info.l_inf_primal_residual,
         convergence_info.l_inf_dual_residual,
         convergence_info.primal_objective - convergence_info.dual_objective
-    ],1)
+    ],Inf)
     current_rel_kkt = norm([
         convergence_info.relative_l_inf_primal_residual,
         convergence_info.relative_l_inf_dual_residual,
         convergence_info.relative_optimality_gap
-    ],1)
+    ],Inf)
     println("Relative KKT's:")
     println(convergence_info.relative_l_inf_primal_residual)
     println(convergence_info.relative_l_inf_dual_residual)
@@ -430,19 +518,20 @@ function scalar_refinement(
     alpha::Float64,
     Delta_P::Union{Float64, Int64},
     Delta_D::Union{Float64, Int64},
+    iteration_limit::Int32=typemax(Int32),
     )
 
     # shifted parameters
-    b_bar = lp.right_hand_side - lp.constraint_matrix * x_k
+    # println(typeof(lp.constraint_matrix))
+    # println(size(lp.constraint_matrix))
+    # println(size(x_k))
+    b_bar = lp.right_hand_side - cudaMV(lp.constraint_matrix, x_k)# - lp.constraint_matrix * x_k
     l_bar = lp.variable_lower_bound - x_k
     u_bar = lp.variable_upper_bound - x_k
-    c_bar = lp.objective_vector - lp.constraint_matrix' * y_k
+    c_bar = lp.objective_vector - cudaMV(lp.constraint_matrix_t, y_k) # - lp.constraint_matrix_t * y_k
 
-    # println("Computing constraint violations...")
-    # # Maximum primal/dual violation
-    # println("Max b violation: ", maximum(abs.(b_bar)))
-    # println("Max l violation: ", maximum(l_bar))
-    # println("Max u violation: ", maximum(-u_bar))
+    println("Computing constraint violations...")
+    # Maximum primal/dual violation
     delta_P = maximum([
         maximum(abs.(b_bar)),
         maximum(l_bar),
@@ -461,22 +550,18 @@ function scalar_refinement(
         ], 
         init=0 # at least 0
     )
-    # println("done")
 
     # Scaling factor
     # println("Computing scaling factors...")
     Delta_P = max(min( 1 / delta_P , alpha*Delta_P ), 1) 
     Delta_D = max(min( 1 / delta_D , alpha*Delta_D ), 1) 
-    # println("Delta_P; ", Delta_P)
-    # println("Delta_D; ", Delta_D)
-    # println("done")
+    
 
     # Scaling the problem
     b_bar = b_bar * Delta_P
     l_bar = l_bar * Delta_P
     u_bar = u_bar * Delta_P
     c_bar = c_bar * Delta_D
-
 
     # Solve scaled-shifted problem
     # println("Creating the scaled programming problem...")
@@ -486,7 +571,7 @@ function scalar_refinement(
     #     Vector{Float64}(u_bar),
     #     spzeros(length(x_k), length(x_k)), # objective matrix. I guess it is Q: x'Qx + c'x + b
     #     Vector{Float64}(c_bar),
-    #     0,  # Objective constant. I guess it is b: x'Qx + c'x + b
+    #     lp.objective_constant,  # Objective constant. I guess it is b: x'Qx + c'x + b
     #     cu_quad_to_quad_matrix(lp.constraint_matrix),
     #     Vector{Float64}(b_bar),
     #     lp.num_equalities
@@ -496,7 +581,7 @@ function scalar_refinement(
     #     Vector{Float64}(lp.variable_upper_bound),
     #     spzeros(length(x_k), length(x_k)), # objective matrix. I guess it is Q: x'Qx + c'x + b
     #     Vector{Float64}(lp.objective_vector),
-    #     0,  # Objective constant. I guess it is b: x'Qx + c'x + b
+    #     lp.objective_constant,  # Objective constant. I guess it is b: x'Qx + c'x + b
     #     cu_quad_to_quad_matrix(lp.constraint_matrix),
     #     Vector{Float64}(lp.right_hand_side),
     #     lp.num_equalities
@@ -511,18 +596,19 @@ function scalar_refinement(
         b_bar,
         lp.num_equalities
     )
-    original_qp = cuPDLP.CuQuadraticProgrammingProblem( # .QuadraticProgrammingProblem( 
-        lp.variable_lower_bound,
-        lp.variable_upper_bound,
-        CUDA.CUSPARSE.CuSparseMatrixCSR(spzeros(length(x_k), length(x_k))), # objective matrix. I guess it is Q: x'Qx + c'x + b
-        lp.objective_vector,
-        0,  # Objective constant. I guess it is b: x'Qx + c'x + b
-        lp.constraint_matrix,
-        lp.right_hand_side,
-        lp.num_equalities
-    )
 
-    qp_cache = cached_quadratic_program_info(original_qp)
+    ### KKT computation ###
+    # original_qp = cuPDLP.CuQuadraticProgrammingProblem( # .QuadraticProgrammingProblem( 
+    #     lp.variable_lower_bound,
+    #     lp.variable_upper_bound,
+    #     CUDA.CUSPARSE.CuSparseMatrixCSR(spzeros(length(x_k), length(x_k))), # objective matrix. I guess it is Q: x'Qx + c'x + b
+    #     lp.objective_vector,
+    #     lp.objective_constant,  # Objective constant. I guess it is b: x'Qx + c'x + b
+    #     lp.constraint_matrix,
+    #     lp.right_hand_side,
+    #     lp.num_equalities
+    # )
+    # qp_cache = cached_quadratic_program_info(original_qp)
     # println("done")
 
     # println("Calling cuPDLP to optimize... (tol="*string(tolerance)*")")
@@ -531,43 +617,42 @@ function scalar_refinement(
         scaled_qp,
         tolerance,
         600,#time_sec_limit,
-        typemax(Int32),#iteration_limit
-    )
-    # println("done")
-    
-    # New solutions
-    # println("New solutions...")
-    # println("Max sol.", maximum(CuVector{Float64}(output.primal_solution)))
-    # println("Max sol.", maximum(CuVector{Float64}(output.dual_solution)))    
-    # println("Min sol.", minimum(CuVector{Float64}(output.primal_solution)))
-    # println("Min sol.", minimum(CuVector{Float64}(output.dual_solution)))
-
-    x_k = x_k + CuVector{Float64}(output.primal_solution) / Delta_P
-    y_k = y_k + CuVector{Float64}(output.dual_solution) / Delta_D
-
-
-    current_kkt, current_rel_kkt = compute_current_KKT(
-        lp,
-        x_k,
-        y_k,
-        qp_cache
+        iteration_limit, #typemax(Int32)
     )
 
-    println("After IR KKT: ", current_kkt)
-    println("After IR rel KKT: ", current_rel_kkt)
-    # println("done")
-    
+    post_ir_kkt = CUDA.norm(
+        [output.iteration_stats[end].convergence_information[end].relative_l_inf_primal_residual,
+        output.iteration_stats[end].convergence_information[end].relative_l_inf_dual_residual,
+        output.iteration_stats[end].convergence_information[end].relative_optimality_gap],
+        Inf
+    )
+    if post_ir_kkt <= 1e-2 # if enough progress
+        # Update refined solution
+        x_k = x_k + output.primal_solution / Delta_P
+        y_k = y_k + output.dual_solution / Delta_D
+    else
+        x_k = nothing 
+        y_k = nothing
+    end
 
-    # # New violations
-    # b_bar = lp.right_hand_side - lp.constraint_matrix * x_k
-    # l_bar = lp.variable_lower_bound - x_k
-    # u_bar = lp.variable_upper_bound - x_k
-    # c_bar = lp.objective_vector - lp.constraint_matrix' * y_k
-    # println("(NEW) Max b violation: ", maximum(abs.(b_bar)))
-    # println("(NEW) Max l violation: ", maximum(l_bar))
-    # println("(NEW) Max u violation: ", maximum(-u_bar))
 
-    return x_k, y_k, current_kkt, current_rel_kkt
+    @info "Post IR relative KKT: " post_ir_kkt
+
+
+
+    ### KKT change check ###
+    # current_kkt, current_rel_kkt = compute_current_KKT(
+    #     lp,
+    #     x_k,
+    #     y_k,
+    #     qp_cache
+    # )
+
+    # println("After IR KKT: ", current_kkt)
+    # println("After IR rel KKT: ", current_rel_kkt)
+
+
+    return x_k, y_k#, current_kkt, current_rel_kkt
 end
 
 # Input:    Violations
@@ -592,10 +677,11 @@ function matrix_refinement(
     scaling_bound = 1e12
 
     # shifted parameters
-    b_bar = lp.right_hand_side - lp.constraint_matrix * x_k
+    b_bar = lp.right_hand_side - cudaMV(lp.constraint_matrix, x_k)# - lp.constraint_matrix * x_k
     l_bar = lp.variable_lower_bound - x_k
     u_bar = lp.variable_upper_bound - x_k
-    c_bar = lp.objective_vector - lp.constraint_matrix' * y_k
+    c_bar = lp.objective_vector - cudaMV(lp.constraint_matrix_t, y_k) # - lp.constraint_matrix_t * y_k
+
 
     # Primal eq violation
     delta_1 = abs.(b_bar)
@@ -678,18 +764,30 @@ function matrix_refinement(
 
     # Create scaling matrices
     # S = CuSparseMatrixCSC(n, n, I, 1:1:n+1, V)
-    D_1 = CUDA.CUSPARSE.CuSparseMatrixCSR(CuVector(1:(length(Delta_1)+1)), CuVector(1:length(Delta_1)),  Delta_1, (length(Delta_1), length(Delta_1)))
-    D_2 = CUDA.CUSPARSE.CuSparseMatrixCSR(CuVector(1:(length(Delta_2)+1)), CuVector(1:length(Delta_2)),  Delta_2, (length(Delta_2), length(Delta_2)))
-    D_3 = CUDA.CUSPARSE.CuSparseMatrixCSR(CuVector(1:(length(Delta_3)+1)), CuVector(1:length(Delta_3)),  Delta_3, (length(Delta_3), length(Delta_3))) # inverse of D_2
+    # D_1 = CUDA.CUSPARSE.CuSparseMatrixCSC(CuVector(1:(length(Delta_1)+1)), CuVector(1:length(Delta_1)),  Delta_1, (length(Delta_1), length(Delta_1)))
+    # D_2 = CUDA.CUSPARSE.CuSparseMatrixCSC(CuVector(1:(length(Delta_2)+1)), CuVector(1:length(Delta_2)),  Delta_2, (length(Delta_2), length(Delta_2)))
+    # D_3 = CUDA.CUSPARSE.CuSparseMatrixCSC(CuVector(1:(length(Delta_3)+1)), CuVector(1:length(Delta_3)),  Delta_3, (length(Delta_3), length(Delta_3))) # inverse of D_2
+    D_1 = CUDA.CUSPARSE.CuSparseMatrixCSR(spdiagm(Delta_1))
+    D_2 = CUDA.CUSPARSE.CuSparseMatrixCSR(spdiagm(Delta_3))
+    D_3 = CUDA.CUSPARSE.CuSparseMatrixCSR(spdiagm(Delta_3))
+
 
 
     # Scaling the problem
-    b_bar = D_1 * b_bar # Must have this scaling
-    l_bar = D_2 * l_bar 
-    u_bar = D_2 * u_bar 
-    c_bar = D_3 * c_bar   
-    sub_mult = lp.constraint_matrix * D_3
-    A_bar = D_1 * sub_mult#(D_1 * CUDA.CUSPARSE.CuSparseMatrixCSC(lp.constraint_matrix)) * D_3
+    b_bar = cudaMV(D_1, b_bar) # D_1 * b_bar # Must have this scaling
+    l_bar = cudaMV(D_2, l_bar) # D_2 * l_bar 
+    u_bar = cudaMV(D_2, u_bar) # D_2 * u_bar 
+    c_bar = cudaMV(D_3, c_bar) # D_3 * c_bar   
+
+    # Testing MM
+    # A_bar = D_1 * lp.constraint_matrix * D_3
+    A_bar = triple_cudaMM(D_1, lp.constraint_matrix, D_3)
+    # A_bar = deepcopy(lp.constraint_matrix)
+    # A : mxn => D1 mxm / D3 nxn
+
+
+    # sub_mult = lp.constraint_matrix * D_3
+    # A_bar = D_1 * sub_mult#(D_1 * CUDA.CUSPARSE.CuSparseMatrixCSC(lp.constraint_matrix)) * D_3
 
     # Solve scaled-shifted problem
     # println("Creating the scaled programming problem...")
@@ -723,7 +821,7 @@ function matrix_refinement(
         CUDA.CUSPARSE.CuSparseMatrixCSR(spzeros(length(x_k), length(x_k))), # objective matrix. I guess it is Q: x'Qx + c'x + b
         c_bar,
         0,  # Objective constant. I guess it is b: x'Qx + c'x + b
-        A_bar,
+        A_bar, # A_bar
         b_bar,
         lp.num_equalities
     )
@@ -758,8 +856,8 @@ function matrix_refinement(
     # println("Min sol.", minimum(CuVector{Float64}(output.primal_solution)))
     # println("Min sol.", minimum(CuVector{Float64}(output.dual_solution)))
 
-    x_k = x_k + D_3 * output.primal_solution
-    y_k = y_k + D_1 * output.dual_solution 
+    x_k = x_k + cudaMV(D_3, output.primal_solution) # D_3 * output.primal_solution
+    y_k = y_k + cudaMV(D_1, output.dual_solution)   # D_1 * output.dual_solution 
 
     current_kkt, current_rel_kkt = compute_current_KKT(
         lp,
@@ -792,6 +890,7 @@ function iterative_refinement(
     current_primal_solution::CuVector{Float64},       
     current_dual_solution::CuVector{Float64},
     # My inputs
+    current_iteration_stats::Any,
     qp_cache::Any,
     tolerance::Float64,
     ir_tolerance_factor::Float64,
@@ -799,38 +898,47 @@ function iterative_refinement(
     scaling_type::String="scalar",
     scaling_name::String="scalar",
     max_iteration::Int64=1,
+    iteration_limit::Int32=typemax(Int32)
     )
 
-    # println("type: ", typeof(qp_cache))
-    # println("problem objective matrix: ", qp_cache.objective_matrix)
+    ### KKT Computation (to check the method) ###
+    # original_qp = cuPDLP.CuQuadraticProgrammingProblem( # .QuadraticProgrammingProblem( 
+    #     problem.variable_lower_bound,#Vector{Float64}(problem.variable_lower_bound),
+    #     problem.variable_upper_bound,#Vector{Float64}(problem.variable_upper_bound),
+    #     CUDA.CUSPARSE.CuSparseMatrixCSR(spzeros(length(current_primal_solution), length(current_primal_solution))),#spzeros(length(x_k), length(x_k)), # objective matrix. I guess it is Q: x'Qx + c'x + b
+    #     problem.objective_vector,#Vector{Float64}(problem.objective_vector),
+    #     problem.objective_constant,#problem.objective_constant,  # Objective constant. I guess it is b: x'Qx + c'x + b
+    #     problem.constraint_matrix,#cu_quad_to_quad_matrix(problem.constraint_matrix),
+    #     problem.right_hand_side, #Vector{Float64}(problem.right_hand_side),
+    #     problem.num_equalities, #problem.num_equalities,
+    # )
+    # qp_cache = cached_quadratic_program_info(original_qp)
+    # println("Computing initial KKT...")
+    # current_kkt, current_rel_kkt, convergence_info = compute_current_KKT(
+    # original_qp,#lp,
+    # current_primal_solution,
+    # current_dual_solution,
+    # qp_cache
+    # )
 
-    # println("General problem dimensions:")
-    # println("A shape: ", size(problem.constraint_matrix))
-    # println("c shape: ", size(problem.objective_vector))
-    # println("b shape: ", size(problem.right_hand_side))
-    # println("x shape: ", size(current_primal_solution))
-    # println("y shape: ", size(current_dual_solution))
-
-    original_qp = cuPDLP.CuQuadraticProgrammingProblem( # .QuadraticProgrammingProblem( 
-        problem.variable_lower_bound,#Vector{Float64}(problem.variable_lower_bound),
-        problem.variable_upper_bound,#Vector{Float64}(problem.variable_upper_bound),
-        CUDA.CUSPARSE.CuSparseMatrixCSR(spzeros(length(current_primal_solution), length(current_primal_solution))),#spzeros(length(x_k), length(x_k)), # objective matrix. I guess it is Q: x'Qx + c'x + b
-        problem.objective_vector,#Vector{Float64}(problem.objective_vector),
-        problem.objective_constant,#problem.objective_constant,  # Objective constant. I guess it is b: x'Qx + c'x + b
-        problem.constraint_matrix,#cu_quad_to_quad_matrix(problem.constraint_matrix),
-        problem.right_hand_side, #Vector{Float64}(problem.right_hand_side),
-        problem.num_equalities, #problem.num_equalities,
-    )
-    qp_cache = cached_quadratic_program_info(original_qp)
-    println("Computing initial KKT...")
-    current_kkt, current_rel_kkt, convergence_info = compute_current_KKT(
-    original_qp,#lp,
-    current_primal_solution,
-    current_dual_solution,
-    qp_cache
-    )
-    println("Before Initial KKT: ", current_kkt)
-    println("Before Initial rel KKT: ", current_rel_kkt)
+    
+    convergence_info = current_iteration_stats.convergence_information[end]
+    # KKT computation 
+    # current_kkt =norm([
+    #     convergence_info.l_inf_primal_residual,
+    #     convergence_info.l_inf_dual_residual,
+    #     convergence_info.primal_objective - convergence_info.dual_objective
+    # ],Inf)
+    current_rel_kkt = norm([
+        convergence_info.relative_l_inf_primal_residual,
+        convergence_info.relative_l_inf_dual_residual,
+        convergence_info.relative_optimality_gap
+    ],Inf)
+    # @info "Before Initial KKT: ", current_kkt
+    @info "Before Initial rel KKT: ", current_rel_kkt
+    if log10(current_rel_kkt) - log10(tolerance) <= 1.6989700043360187
+        return nothing
+    end
 
     # Problem to quadratic form 
     lp = LP_to_quasi_standard_form(problem)
@@ -846,7 +954,7 @@ function iterative_refinement(
     # println("dual norm inside IR:   ", norm(current_dual_solution))
 
     # Slack variables
-    Z_I_s = problem.constraint_matrix*current_primal_solution .- problem.right_hand_side # Zs = -(0; s) = b - Ax => s=Ax - b
+    Z_I_s = cudaMV(problem.constraint_matrix, current_primal_solution) .- problem.right_hand_side # problem.constraint_matrix*current_primal_solution .- problem.right_hand_side # Zs = -(0; s) = b - Ax => s=Ax - b
     # println("Length 1: ", length(Z_I_s))
     s = Z_I_s[problem.num_equalities+1:end]
     # println("Norm of Z_I_s: ", norm(Z_I_s))
@@ -860,40 +968,29 @@ function iterative_refinement(
     # println("Length 1: ", length([current_primal_solution; s]))
     # println("Length 2: ", length(x_k))
 
-    # println("Quasi-Standard problem dimensions:")
-    # println("A shape: ", size(lp.constraint_matrix))
-    # println("c shape: ", size(lp.objective_vector))
-    # println("b shape: ", size(lp.right_hand_side))
-    # println("x shape: ", size(x_k))
-    # println("y shape: ", size(y_k))
 
-    # Current KKT 
-    # cuPDLP.CuLinearProgrammingProblem(
-    #     "hola"
+
+    # ### Current KKT computation ### 
+    # original_qp = cuPDLP.CuQuadraticProgrammingProblem( # .QuadraticProgrammingProblem( 
+    #     lp.variable_lower_bound,#Vector{Float64}(lp.variable_lower_bound),
+    #     lp.variable_upper_bound,#Vector{Float64}(lp.variable_upper_bound),
+    #     CUDA.CUSPARSE.CuSparseMatrixCSR(spzeros(length(x_k), length(x_k))),#spzeros(length(x_k), length(x_k)), # objective matrix. I guess it is Q: x'Qx + c'x + b
+    #     lp.objective_vector,#Vector{Float64}(lp.objective_vector),
+    #     lp.objective_constant,#lp.objective_constant,  # Objective constant. I guess it is b: x'Qx + c'x + b
+    #     lp.constraint_matrix,#cu_quad_to_quad_matrix(lp.constraint_matrix),
+    #     lp.right_hand_side, #Vector{Float64}(lp.right_hand_side),
+    #     lp.num_equalities, #lp.num_equalities,
     # )
-    original_qp = cuPDLP.CuQuadraticProgrammingProblem( # .QuadraticProgrammingProblem( 
-        lp.variable_lower_bound,#Vector{Float64}(lp.variable_lower_bound),
-        lp.variable_upper_bound,#Vector{Float64}(lp.variable_upper_bound),
-        CUDA.CUSPARSE.CuSparseMatrixCSR(spzeros(length(x_k), length(x_k))),#spzeros(length(x_k), length(x_k)), # objective matrix. I guess it is Q: x'Qx + c'x + b
-        lp.objective_vector,#Vector{Float64}(lp.objective_vector),
-        lp.objective_constant,#lp.objective_constant,  # Objective constant. I guess it is b: x'Qx + c'x + b
-        lp.constraint_matrix,#cu_quad_to_quad_matrix(lp.constraint_matrix),
-        lp.right_hand_side, #Vector{Float64}(lp.right_hand_side),
-        lp.num_equalities, #lp.num_equalities,
-    )
-    qp_cache = cached_quadratic_program_info(original_qp)
-    # println("PRIMAL FEAS BY ME:")
-    # println("||A(x,s)-b||_2: ", norm(lp.constraint_matrix * x_k - lp.right_hand_side))
-    println("Computing initial KKT...")
-    current_kkt, current_rel_kkt, convergence_info = compute_current_KKT(
-    original_qp,#lp,
-    x_k,
-    y_k,
-    qp_cache
-    )
-    println("Initial KKT: ", current_kkt)
-    println("Initial rel KKT: ", current_rel_kkt)
-    # println("done")
+    # qp_cache = cached_quadratic_program_info(original_qp)
+    # # println("PRIMAL FEAS BY ME:")
+    # # println("||A(x,s)-b||_2: ", norm(lp.constraint_matrix * x_k - lp.right_hand_side))
+    # println("Computing initial KKT...")
+    # current_kkt, current_rel_kkt, convergence_info = compute_current_KKT(
+    # original_qp,#lp,
+    # x_k,
+    # y_k,
+    # qp_cache
+    # )
 
     # Problem parameters
     A = lp.constraint_matrix
@@ -912,32 +1009,36 @@ function iterative_refinement(
         Delta_3 = CUDA.ones(Float64, length(c))
     end
 
-    # println("Initializing the IR loop...")
+    println("Initializing the IR loop...")
     # Iterations of IR
     k = 0
     while true
         k+=1
 
+        ir_tolerance = ir_tolerance_factor# max(min(current_rel_kkt*ir_tolerance_factor, 1e-1), 1e-3)
+
         # Refined solution
         if scaling_type == "scalar"
-            println("Calling scalar IR..., with tolerance: ", current_rel_kkt*ir_tolerance_factor)
-            x_k, y_k, current_kkt, current_rel_kkt = scalar_refinement(
+            @info "Calling scalar IR..., with tolerance: ", ir_tolerance
+            # x_k, y_k, current_kkt, current_rel_kkt = scalar_refinement(
+            x_k, y_k = scalar_refinement(
                 lp,
                 x_k,
                 y_k,
-                min(current_rel_kkt*ir_tolerance_factor, 1e-1),#10^(-ceil(-log10(current_kkt))) * ir_tolerance_factor,
+                ir_tolerance,#10^(-ceil(-log10(current_rel_kkt))) * ir_tolerance_factor,
                 alpha,
                 Delta_P,
                 Delta_D,
+                iteration_limit, # iteration limit
             )
             println("done")
         elseif scaling_type == "matrix"
-            println("Calling matrix IR..., with tolerance: ", current_rel_kkt*ir_tolerance_factor)
+            @info "Calling matrix IR..., with tolerance: ", ir_tolerance
             x_k, y_k = matrix_refinement(
                 lp,
                 x_k,
                 y_k,
-                min(current_rel_kkt*ir_tolerance_factor, 1e-1),#10^(-ceil(-log10(current_kkt))) * ir_tolerance_factor,
+                ir_tolerance,#10^(-ceil(-log10(current_rel_kkt))) * ir_tolerance_factor,
                 alpha,
                 Delta_1,
                 Delta_2,
@@ -947,15 +1048,18 @@ function iterative_refinement(
             println("done")
         end
 
+        if isnothing(x_k) || isnothing(y_k)
+            return nothing
+        end 
 
 
 
         # Termination criteria 
-        if current_kkt <= tolerance || k >= max_iteration
+        if current_rel_kkt <= tolerance || k >= max_iteration
             new_primal_solution = x_k[1:length(current_primal_solution)]
             new_dual_solution = y_k
-            new_primal_product = problem.constraint_matrix * new_primal_solution
-            new_primal_gradient = problem.constraint_matrix'*new_dual_solution
+            new_primal_product = cudaMV(problem.constraint_matrix, new_primal_solution) # problem.constraint_matrix * new_primal_solution
+            new_primal_gradient = cudaMV(problem.constraint_matrix_t, new_dual_solution) # problem.constraint_matrix'*new_dual_solution
             new_dual_product = (problem.objective_vector - new_primal_gradient)
 
             return IRSolution(

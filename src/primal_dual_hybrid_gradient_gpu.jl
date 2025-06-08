@@ -487,6 +487,7 @@ function optimize(
     start_rescaling_time = time()
     # GPU Checked: same results for both scalings 
     if !isa(original_problem, CuQuadraticProgrammingProblem)
+        # scaled_problem = no_rescale_problem(
         scaled_problem = rescale_problem(
             params.l_inf_ruiz_iterations,
             params.l2_norm_rescaling,
@@ -745,6 +746,21 @@ function optimize(
     solver_state.numerical_error = false
     display_iteration_stats_heading(params.verbosity)
 
+    # MINE
+    # saving only first and last iterates
+    # primal_iterates = Vector{Float64}[]#CuArray{Any}[]
+    # dual_iterates = Vector{Float64}[]#CuArray{Float64}[]
+    kkt_values = Float64[]
+    primal_near_boundaries = Int64[]
+    # direction_cos_angles = Float64[] # e = (1,...,1)
+    # e_vector = ones(primal_size)
+    # solution_magnitudes = Float64[]
+    flattening_conditions = Dict(
+        "first_flat_stage"=>false,
+        "non_flat_stage"=>false,
+        "second_flat_stage"=>false
+    )
+
     iteration = 0
     while true
         iteration += 1
@@ -789,40 +805,6 @@ function optimize(
                 buffer_kkt_infeas,
                 buffer_lp,
             )
-            # if iteration == 1052 #|| iteration == 13
-            #     println("Iter "*string(iteration))
-            #     println("norm of primal sol:")
-            #     println(CUDA.norm(solver_state.current_primal_solution))
-            #     println("norm of dual sol:")
-            #     println(CUDA.norm(solver_state.current_dual_solution))
-            #     println("relative KKT values from cuPDLP:")
-            #     println(current_iteration_stats.convergence_information[1].relative_l_inf_primal_residual)
-            #     println(current_iteration_stats.convergence_information[1].relative_l_inf_dual_residual)
-            #     println(current_iteration_stats.convergence_information[1].relative_optimality_gap)
-            #     println("KKT normal:")
-            #     println(norm([
-            #         current_iteration_stats.convergence_information[1].l_inf_primal_residual,
-            #         current_iteration_stats.convergence_information[1].l_inf_dual_residual,
-            #         current_iteration_stats.convergence_information[1].primal_objective - current_iteration_stats.convergence_information[1].dual_objective,
-            #     ],1))
-            #     # exit()
-            # elseif iteration == 1051 #|| iteration == 12
-            #     println("Iter "*string(iteration))
-            #     println("norm of primal sol:")
-            #     println(CUDA.norm(solver_state.current_primal_solution))
-            #     println("norm of dual sol:")
-            #     println(CUDA.norm(solver_state.current_dual_solution))
-            #     println("relative KKT values from cuPDLP:")
-            #     println(current_iteration_stats.convergence_information[1].relative_l_inf_primal_residual)
-            #     println(current_iteration_stats.convergence_information[1].relative_l_inf_dual_residual)
-            #     println(current_iteration_stats.convergence_information[1].relative_optimality_gap)  
-            #     println("KKT normal:")
-            #     println(norm([
-            #         current_iteration_stats.convergence_information[1].l_inf_primal_residual,
-            #         current_iteration_stats.convergence_information[1].l_inf_dual_residual,
-            #         current_iteration_stats.convergence_information[1].primal_objective - current_iteration_stats.convergence_information[1].dual_objective,
-            #     ],1))
-            # end
 
             method_specific_stats = current_iteration_stats.method_specific_stats
             method_specific_stats["time_spent_doing_basic_algorithm"] =
@@ -906,6 +888,9 @@ function optimize(
                     # )
                 end
 
+                # MINE : save the primal-dual solutions
+
+
                 return unscaled_saddle_point_output(
                     scaled_problem,
                     avg_primal_solution,
@@ -913,12 +898,17 @@ function optimize(
                     termination_reason,
                     iteration - 1,
                     iteration_stats,
+                    # (primal_iterates, dual_iterates, primal_near_boundaries,
+                    # solution_magnitudes, direction_cos_angles,
+                    # ),
+                    (kkt_values,kkt_values,primal_near_boundaries,primal_near_boundaries,primal_near_boundaries),
                 )
             end
 
             buffer_primal_gradient .= d_scaled_problem.scaled_qp.objective_vector .- solver_state.current_dual_product
 
             prev_last_restart_info = deepcopy(last_restart_info)
+
 
             current_iteration_stats.restart_used = run_restart_scheme(
                 d_scaled_problem.scaled_qp,
@@ -938,6 +928,9 @@ function optimize(
                 buffer_kkt,
                 buffer_primal_gradient,
                 #Mine
+                current_iteration_stats,
+                # (primal_iterates, dual_iterates, kkt_values, primal_near_boundaries, flattening_conditions),
+                (kkt_values, primal_near_boundaries, flattening_conditions),
                 qp_cache,
                 iteration, # PDGH iteration
                 params.termination_criteria,
@@ -972,6 +965,43 @@ function optimize(
 
         time_spent_doing_basic_algorithm_checkpoint = time()
 
+
+        # MINE : Save the primal/dual solutions. start and end
+        # if iteration % 1000 == 0
+        if isa(original_problem, QuadraticProgrammingProblem)
+            # CUDA.@allowscalar push!(primal_iterates, [solver_state.current_primal_solution[i_coord] for i_coord in [1, Int(floor(primal_size/2)), primal_size]])
+            # CUDA.@allowscalar push!(dual_iterates, [solver_state.current_dual_solution[i_coord] for i_coord in [1, Int(floor(dual_size/2)), dual_size]])
+            relative_kkt = maximum([
+                current_iteration_stats.convergence_information[end].relative_l_inf_primal_residual,
+                current_iteration_stats.convergence_information[end].relative_l_inf_dual_residual,
+                current_iteration_stats.convergence_information[end].relative_optimality_gap,
+            ])
+            # @info "Current relative KKT: ", relative_kkt 
+            push!(kkt_values, relative_kkt)
+
+            # CUDA.@allowscalar 
+            n_lb = CUDA.sum(abs.(solver_state.current_primal_solution .- d_scaled_problem.scaled_qp.variable_lower_bound) .<= params.termination_criteria.eps_optimal_relative)
+            n_ub = CUDA.sum(abs.(solver_state.current_primal_solution .- d_scaled_problem.scaled_qp.variable_upper_bound) .<= params.termination_criteria.eps_optimal_relative)
+            push!(primal_near_boundaries, n_lb + n_ub)
+            # @info "Current # of near boundaries: ", n_lb + n_ub
+            
+            # # x_t magnitudes
+            # x_t_norm = CUDA.norm(solver_state.current_primal_solution)
+            # push!(solution_magnitudes, x_t_norm)
+            # # @info "solution_magnitudes", solution_magnitudes
+
+            # # cos of angles between e and x_t 
+            # if x_t_norm > 0
+            #     cos_angle_t = (e_vector' * solver_state.current_primal_solution)/( sqrt(primal_size)*x_t_norm )
+            # else
+            #     cos_angle_t = 0
+            # end
+            # push!(direction_cos_angles, cos_angle_t)
+
+        end
+        # CUDA.@allowscalar push!(dual_iterates, [solver_state.current_dual_solution[1], solver_state.current_dual_solution[floor(iteration/2)], solver_state.current_dual_solution[end]])
+        # end 
+        
         if params.verbosity >= 6 && print_to_screen_this_iteration(
             false, # termination_reason
             iteration,

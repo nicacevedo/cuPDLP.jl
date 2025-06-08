@@ -32,6 +32,9 @@ struct SaddlePointOutput
     is defined by algorithm parameters.
     """
     iteration_stats::Vector{IterationStats}
+
+    # MINE : save primal-dual iterates
+    primal_dual_iterates::Any
 end
 
 """
@@ -44,6 +47,7 @@ function unscaled_saddle_point_output(
     termination_reason::TerminationReason,
     iterations_completed::Int64,
     iteration_stats::Vector{IterationStats},
+    primal_dual_iterates::Any,
 )
     # Unscale iterates.
     original_primal_solution =
@@ -57,6 +61,7 @@ function unscaled_saddle_point_output(
         termination_reason_to_string(termination_reason),
         iterations_completed,
         iteration_stats,
+        primal_dual_iterates,
     )
 end
 
@@ -500,12 +505,15 @@ function run_restart_scheme(
     buffer_kkt::BufferKKTState,
     buffer_primal_gradient::CuVector{Float64},
     # MINE
+    current_iteration_stats::Any,
+    primal_dual_iterates::Any,
     qp_cache::Any,
     pdhg_iteration::Int,
     termination_criteria::Any=nothing, #TerminationCriteria,
     ir_over_restart::Bool=false,
     ir_type::String="scalar",
     ir_iteration_threshold::Int64=1000,
+    iteration_limit::Int32=typemax(Int32),
     ir_tolerance_factor::Float64=1e-3,
     # last_restart_iteration::Int,
 )
@@ -584,13 +592,342 @@ function run_restart_scheme(
         end
     end
 
-    ir_refinement_applied = false # MINE
 
+                # NEW: Check statistics of last
+                function detect_oscillation(cuv::Any; window=10, min_amplitude=0.1, min_crossings=3)
+                    v = Array(cuv)  # Move to CPU for analysis[1]
+                    n = length(v)
+                    if n < window+1
+                        return false
+                    end
+                    # Compute running mean
+                    ref = [mean(v[max(1,i-window):i]) for i in 1:n]
+                    global_ref = mean(v)
+                    stds = [std(v[max(1,i-window):i]) for i in 1:n]
+                    global_std = std(v)
+                    # Outlier indices
+                    crossings = 0
+                    out_idx = [i for i in 1:n if abs(v[i] - global_ref) > min_amplitude * global_std]
+                    for (i,index) in enumerate(out_idx)
+                        if i > 1
+                            if (v[out_idx[i-1]] - global_ref) * (v[index] - global_ref) < 0
+                                crossings += 1
+                            end 
+                        end
+                    end
+    
+                    # # Detect zero crossings with amplitude threshold
+                    # crossings = 0
+                    # for i in 2:n
+                    #     if (v[i-1] - ref[i-1]) * (v[i] - ref[i]) < 0 && abs(v[i] - v[i-1]) > min_amplitude * stds[i]
+                    #     # if (v[i-1] - global_ref) * (v[i] - global_ref) < 0 && abs(v[i] - v[i-1]) > min_amplitude*stds[i]
+                    #         crossings += 1
+                    #     end
+                    # end
+                    # @info "crossings" crossings
+                    return crossings ≥ min_crossings
+                end
+
+                function detect_improvement(cuv::Any; window=10, min_amplitude=0.1, min_crossings=3)
+                    v = Array(cuv)  # Move to CPU for analysis[1]
+                    n = length(v)
+                    # @info n 
+                    # @info window +1
+                    # if n < window+1
+                    #     return false
+                    # end
+                    # @info "computing stats..."
+                    # compute statistics
+                    global_ref = mean(v)
+                    global_std = std(v)
+                    # Improvement counter
+                    # @info v .- global_ref
+                    v_end = v[end-Int(floor(n/2)):end]
+                    crossings = sum(v_end .- global_ref .< -min_amplitude * global_std) #- 1e-6)
+                    successes2 = 0
+                    for i in 2:length(v_end)
+                        if v_end[i-1] > v_end[i] 
+                            successes2 += 1
+                        end
+                    end
+                    @info "successes", crossings
+                    @info "successes2", successes2
+                    return crossings ≥ min_crossings || successes2 >= min_crossings #  
+                end
+
+                function curvature(x::AbstractVector)
+                    n = length(x)
+                    if n < 3
+                        error("Need at least 3 points to compute curvature.")
+                    end
+                    return x[3:end] .- 2 .* x[2:end-1] .+ x[1:end-2]  # second discrete difference
+                end
+
+                function detect_flat_stage(cuv::Any; window=10, min_amplitude=0.1, min_crossings=3, tolerance=1e-6)
+                    v = Array(cuv)  # Move to CPU for analysis[1]
+                    n = length(v)
+                    global_ref = mean(v)
+                    global_std = std(v)
+                    # Improvement counter
+                    # @info v .- global_ref
+                    v_end = v[end-Int(floor(n/2)):end]
+                    if global_std <= tolerance && sum(abs.(v_end[end] - mean(v_end)) .<= min_amplitude * std(v_end)) >= min_crossings
+                        @info "Curvature: " curvature(v_end)
+                        return true
+                    end
+                    bad_crossings = sum(v_end .- global_ref .>= -min_amplitude * global_std) #- 1e-6)
+                    @info "bad_crossings", bad_crossings
+                    return bad_crossings >= min_crossings  && v_end[end] - global_ref .>= -min_amplitude * global_std && std(v_end) <= tolerance && mean(v_end) >= global_ref
+                end
+    
+
+                function is_flat(x::Any; tol_rel=1e-6, tail=5)
+                    n = length(x)
+                    if n == 0
+                        return true
+                    elseif all(x .== x[1])
+                        return true
+                    end
+                
+                    Δ = maximum(x) - minimum(x)
+                    rel_change = Δ / abs(x[1] != 0 ? x[1] : 1.0)
+                
+                    # Check relative change over all values
+                    if rel_change < tol_rel
+                        return true
+                    end
+                
+                    # Optional: check last `tail` values for recent stagnation
+                    if n > tail
+                        tail_change = maximum(x[end-tail+1:end]) - minimum(x[end-tail+1:end])
+                        rel_tail = tail_change / abs(x[end-tail] != 0 ? x[end-tail] : 1.0)
+                        if rel_tail < tol_rel
+                            return true
+                        end
+                    end
+                
+                    return false
+                end
+                
+
+                # Flat-behavior detection with surr_min and surr_max
+                function surr_min(x::Any, t_start::Int=1, t_end::Int=typemax(Int))
+                    t_end = min(t_end, length(x))
+                    min_x = x[t_start]
+                    x_copy = Float64[]
+                    for t in t_start:t_end
+                        min_x = min(min_x, x[t])
+                        push!(x_copy, min_x)
+                    end
+                    return x_copy
+                end
+
+                function surrogate(x::Any, surr_type::String="min", t_start::Int=1, t_end::Int=typemax(Int))
+                    if surr_type == "min"
+                        return surr_min(x, t_start, t_end)
+                    elseif surr_type == "max"
+                        return -surr_min(-x, t_start, t_end)
+                    else
+                        error("Unsupported surrogate type: $surr_type")
+                    end
+                end
+
+
+                function is_flattening(x::Any; tolerance::Float64=1e-6, delta_t::Int=5)
+                    max_surr = surrogate(x, "max")[2:end]
+                    min_surr = surrogate(x, "min")[2:end]
+                    # @info "Entering is flattening..."
+                    # @info max_surr
+                    # @info min_surr
+                    # @info max_surr .- min_surr
+                    if !any(max_surr .- min_surr .> tolerance)
+                        # @info "TRUE"
+                        return true
+                    end
+
+                    for t in delta_t:(length(x)-delta_t)
+                        first_half_max = surrogate(x, "max", 1, t)[2:end]
+                        first_half_min = surrogate(x, "min", 1, t)[2:end]
+                        first_half_is_big = !any(first_half_max .- first_half_min .<= tolerance)
+                        # @info "First half info for t=", t
+                        # @info first_half_max 
+                        # @info first_half_min
+                        # @info first_half_max .- first_half_min
+
+                        second_half_max = surrogate(x, "max", t, typemax(Int))
+                        second_half_min = surrogate(x, "min", t, typemax(Int))
+                        secnd_half_is_sml = !any(second_half_max .- second_half_min .> tolerance)
+                        # @info second_half_max .- second_half_min
+                        # if first_half_is_big && secnd_half_is_sml
+                        if secnd_half_is_sml
+                            # @info "TRUE"
+                            return true
+                        end
+                    end
+                    # error("stop")
+                    return false
+                end
+
+
+                # function std_gpu(x::CuArray; dims=:)
+                #     μ = mean(x; dims=dims)
+                #     centered = x .- μ
+                #     sq = centered .^ 2  # This should work
+                #     sqrt.(mean(sq; dims=dims))
+                # end
+                n_last_iterations = 20
+                oscillation_trigger = true
+                flat_kkt_trigger = false
+                near_bounds_trigger = false
+                if pdhg_iteration >= max(n_last_iterations +1, ir_iteration_threshold) && last_restart_info.ir_refinements_number == 0 && CUDA.size(primal_dual_iterates[1])[1] > 0 && ir_over_restart
+
+                    # # Primal iterates
+                    # # @info primal_dual_iterates
+                    # last_primal_iterates = primal_dual_iterates[1][end-n_last_iterations+1:end,:]
+                    # last_primal_iterates_cpu = zeros(n_last_iterations, 3)
+                    # for (i, row) in enumerate(last_primal_iterates)
+                    #     last_primal_iterates_cpu[i,:] = Array(row)
+                    # end
+                    # for col_index in 1:size(last_primal_iterates_cpu)[2]
+                    #     std_dev = std(last_primal_iterates_cpu[:,col_index])
+                        
+                    #     # Detect oscillation behavior
+                    #     oscillation_detected = detect_oscillation(last_primal_iterates_cpu[:,col_index], window=n_last_iterations-1, min_amplitude=0.1, min_crossings=3)
+                    #     # println("Oscillation detected: ", oscillation_detected)
+                    #     if oscillation_detected
+                    #         # @info "Oscillation detected (primal): ", oscillation_detected
+                    #         # @info last_primal_iterates_cpu[:,col_index]
+                    #         # @info "pdgh iter" pdhg_iteration
+                    #         oscillation_trigger = true
+                    #         break
+                    #     end
+                    # end
+    
+                    # # Dual iterates
+                    # if !oscillation_trigger
+                    #     last_dual_iterates = primal_dual_iterates[2][end-n_last_iterations+1:end,:]
+                    #     # @info "matrix iterates" last_dual_iterates
+                    #     last_dual_iterates_cpu = zeros(n_last_iterations, 3)
+                    #     for (i, row) in enumerate(last_dual_iterates)
+                    #         last_dual_iterates_cpu[i,:] = Array(row)
+                    #     end
+                    #     # oscillation_detected = false
+                    #     for col_index in 1:size(last_dual_iterates_cpu)[2]
+                    #         std_dev = std(last_dual_iterates_cpu[:,col_index])
+                            
+                    #         # Detect oscillation behavior
+                    #         oscillation_detected = detect_oscillation(last_dual_iterates_cpu[:,col_index], window=n_last_iterations-1, min_amplitude=0.1, min_crossings=3)
+                    #         # println("Oscillation detected: ", oscillation_detected)
+                    #         if oscillation_detected
+                    #             # @info "Oscillation detected (dual): ", oscillation_detected
+                    #             # @info last_dual_iterates_cpu[:,col_index]
+                    #             # @info "pdgh iter" pdhg_iteration
+                    #             oscillation_trigger = true
+                    #             break
+                    #         end
+                    #     end
+                    # end
+                    # obj_pdhg_iter = 7500
+                    # If oscillation detected, check KKT residuals improvement
+                    # n_last_iterations_kkt = n_last_iterations
+                    if oscillation_trigger#|| pdhg_iteration >= 50
+
+                        # @info "Oscillation detected: Checking KKT residuals..."
+                        # @info CUDA.size(primal_dual_iterates[3]), n_last_iterations_kkt
+                        last_kkt_values = primal_dual_iterates[3][end-n_last_iterations+1:end]
+                        primal_near_bounds_number = primal_dual_iterates[4][end-n_last_iterations+1:end]
+                        # @info "Last KKT values: ", last_kkt_values 
+                        # improvement_detected = detect_improvement(last_kkt_values, window=n_last_iterations, min_amplitude=0.1, min_crossings=3)
+                        # flat_kkt_trigger = detect_flat_stage(last_kkt_values, window=n_last_iterations, min_amplitude=0.9, min_crossings=8, tolerance=termination_criteria.eps_optimal_relative)
+                        # flat_kkt_trigger = is_flat(last_kkt_values, tol_rel=termination_criteria.eps_optimal_relative, tail=n_last_iterations) || detect_oscillation(last_kkt_values, window=n_last_iterations, min_amplitude=0.5, min_crossings=15)
+                        # near_bounds_trigger = is_flat(primal_near_bounds_number, tol_rel=termination_criteria.eps_optimal_relative, tail=n_last_iterations) || detect_oscillation(primal_near_bounds_number, window=n_last_iterations, min_amplitude=0.5, min_crossings=15)
+                        # @info "last_kkt_values" last_kkt_values
+                        # @info "primal near bounds #" primal_near_bounds_number
+                        # @info "ITERATION", pdhg_iteration
+                        # max_diff_kkt = maximum(last_kkt_values) - minimum(last_kkt_values) 
+                        max_diff_bounds = maximum(primal_near_bounds_number) - minimum(primal_near_bounds_number)
+                        flat_tolerance = min(max(mean(last_kkt_values)*1e-3, termination_criteria.eps_optimal_relative), 1e-3)
+                        flat_tolerance_2 = min(max(max_diff_bounds*1e-1, 1e-1),10)
+                        flat_kkt_trigger = is_flattening(last_kkt_values; tolerance=flat_tolerance, delta_t=5)
+                        near_bounds_trigger = is_flattening(primal_near_bounds_number; tolerance=flat_tolerance_2, delta_t=5)
+                        
+                        # @info "Improvement detected: ", flat_kkt_trigger
+                        # flat_kkt_trigger = !improvement_detected
+
+                        if 100 <= pdhg_iteration <= 150
+                            @info "ITERATION: ", pdhg_iteration
+                            @info "KKT", last_kkt_values
+                            @info "BDS", primal_near_bounds_number
+                            @info "history of BDS", primal_dual_iterates[4][end-50+1:end]
+
+                        elseif 251<= pdhg_iteration
+                            @info "LAST ITERATIONS: ", pdhg_iteration
+                            @info "All bounds history", primal_dual_iterates[4]
+                        end
+                        # if flat_kkt_trigger && !near_bounds_trigger
+                        #     @info "Flat kkt trigger: ", flat_kkt_trigger
+                        #     @info "\n====== iter:", pdhg_iteration
+                        # elseif near_bounds_trigger && !flat_kkt_trigger
+                        #     @info "Near bound trigger: ", near_bounds_trigger
+                        #     @info "\n====== iter:", pdhg_iteration
+                        # end
+                        if flat_kkt_trigger && near_bounds_trigger #|| pdhg_iteration >= obj_pdhg_iter#   #
+                            # sleep(5)
+
+                            if !primal_dual_iterates[5]["first_flat_stage"] 
+                                primal_dual_iterates[5]["first_flat_stage"] = true 
+                                @info "## NOT TRIGGERED ##"
+                                @info "Flat tolerance on iter k="*string(pdhg_iteration)*": ", flat_tolerance
+                                @info "Last KKT values: ", last_kkt_values
+                                @info "Flat tolerance 2 on iter k="*string(pdhg_iteration)*": ", flat_tolerance_2
+                                @info "# of near bounds: ", primal_near_bounds_number
+
+                                @info "FIRST STAGE TO TRUE IN ITER:", pdhg_iteration 
+                            elseif primal_dual_iterates[5]["first_flat_stage"] && primal_dual_iterates[5]["non_flat_stage"] && !primal_dual_iterates[5]["second_flat_stage"] 
+                                # @info "Did it save the bool??" primal_dual_iterates[5]["first_flat_stage"]
+                                @info "## TRIGGERED ##"
+                                @info "Flat tolerance on iter k="*string(pdhg_iteration)*": ", flat_tolerance
+                                @info "Last KKT values: ", last_kkt_values
+                                @info "Flat tolerance 2 on iter k="*string(pdhg_iteration)*": ", flat_tolerance_2
+                                @info "# of near bounds: ", primal_near_bounds_number
+                                @info "SECOND FLAT STAGE IN ITER:", pdhg_iteration
+                                primal_dual_iterates[5]["second_flat_stage"] = true
+                                do_restart = true
+                                # error("WOAO")
+                            end
+                            # exit()
+                            # @info primal_dual_iterates[4]
+                            # error("stopping")
+                        elseif !near_bounds_trigger # near bounds stop being flat
+                            if primal_dual_iterates[5]["first_flat_stage"] && !primal_dual_iterates[5]["non_flat_stage"]
+                                @info "## NOT TRIGGERED ##"
+                                @info "Flat tolerance on iter k="*string(pdhg_iteration)*": ", flat_tolerance
+                                @info "Last KKT values: ", last_kkt_values
+                                @info "Flat tolerance 2 on iter k="*string(pdhg_iteration)*": ", flat_tolerance_2
+                                @info "# of near bounds: ", primal_near_bounds_number
+                                primal_dual_iterates[5]["non_flat_stage"] = true 
+                                @info "NON FLAT STAGE TO TRUE IN ITER:", pdhg_iteration
+                            end
+                        end
+                        # if pdhg_iteration >= 50
+                        #     @info primal_dual_iterates[4]
+                        #     error("Breaking...")
+                        # else
+                        #     @info "ITERATION" pdhg_iteration
+                        # end
+                        # exit()
+                    end
+                    # primal_dual_iterates
+                    # current_iteration_stats
+                end 
+
+    ir_refinement_applied = false # MINE
+    
     if !do_restart
         return RESTART_CHOICE_NO_RESTART
     else # MINE: If we do restart
         if reset_to_average
-            if verbosity >= 4
+            if verbosity >= 6
                 print("  Restarted to average")
             end
             # ir_iteration_threshold = 1
@@ -602,16 +939,31 @@ function run_restart_scheme(
             dual_product .= problem.objective_vector .- buffer_avg.avg_primal_gradient
             buffer_primal_gradient .= buffer_avg.avg_primal_gradient
 
+        else
+        # Current point is much better than average point.
+            if verbosity >= 4
+                print("  Restarted to current")
+            end
+        end
+
             # MINE: Apply IR over the average/current solution
             # 500 <= last_restart_info.last_restart_length <= 1000 && 0 >1
             # && isnothing(last_restart_info.last_restart_kkt_residual)
             # NOTE: I am not sure what "last_restart_length" is. I am assuming it is the distance of the current iteration and the last restart.
             #elseif
-            if ir_over_restart && (pdhg_iteration >= ir_iteration_threshold) && last_restart_info.ir_refinements_number == 0 # && 1<0# && last_restart_info.last_restart_length <= 2 # only 1 iter
+            if ir_over_restart && (pdhg_iteration >= ir_iteration_threshold) && last_restart_info.ir_refinements_number == 0 &&
+                flat_kkt_trigger && near_bounds_trigger && primal_dual_iterates[5]["second_flat_stage"] # && last_restart_info.last_restart_length <= 2 # only 1 iter
+                # if ir_over_restart && (pdhg_iteration >= ir_iteration_threshold) && last_restart_info.ir_refinements_number == 0 # && 1<0# && last_restart_info.last_restart_length <= 2 # only 1 iter
                 println("threshold: ", ir_iteration_threshold)
-                println("I AM DOING ["*string(ir_type)*"] IR (iteration threshold:"*string(ir_iteration_threshold)*")")
-                println("cuPDLP iteration: "*string(pdhg_iteration))
-    
+                @info "candidate res: ", candidate_kkt_residual
+                # println("buffer avg: ", buffer_avg)
+                # println("average res: ", avg_kkt_res)
+
+                # exit()
+                # println("Buffer KKT: ", fieldnames(buffer_kkt))
+                @info "I AM DOING ["*string(ir_type)*"] IR (iteration threshold:"*string(ir_iteration_threshold)*")"
+                @info "cuPDLP iteration: "*string(pdhg_iteration)
+
                 # println("PRE-Checking feasibility of IR solution...")
                 # println("1) Primal feasibility violations:")
                 # println("1.1) Lower bound: ", sum(problem.variable_lower_bound .> current_primal_solution))
@@ -629,12 +981,13 @@ function run_restart_scheme(
 
 
                 # DO: Iterative refinement
-                
+                t0 = time()
                 ir_output = iterative_refinement(
                 problem,            # Potentially: Scaled problem of cuPDLP
                 current_primal_solution,       
                 current_dual_solution,
                 # My inputs
+                current_iteration_stats,
                 qp_cache,
                 termination_criteria.eps_optimal_relative, # tolerance
                 ir_tolerance_factor,        # ir_tolerance_factor
@@ -642,44 +995,24 @@ function run_restart_scheme(
                 ir_type,   # scaling type
                 # "matrix",
                 "scalar",   # scaling name
+                1, # max iteration
+                iteration_limit, #iteration limit
                 )
+                println("Time spent doing Refinement: ", time()- t0)
                 
-                current_primal_solution .= ir_output.current_primal_solution
-                current_dual_solution .= ir_output.current_dual_solution
-                primal_product .= ir_output.primal_product
-                dual_product .= ir_output.dual_product
-                buffer_primal_gradient .= ir_output.primal_gradient
+                if !isnothing(ir_output)
 
-                # println("Checking feasibility of IR solution...")
-                # println("1) Primal feasibility violations:")
-                # println("1.1) Lower bound: ", sum(problem.variable_lower_bound .> current_primal_solution))
-                # println("1.2) Upper bound: ", sum(problem.variable_upper_bound .< current_primal_solution))
-                # println("1.3) At least Ax>=b: ", sum(problem.constraint_matrix*current_primal_solution .+ 1e-8 .< problem.right_hand_side)) #
-                # # println("2) Somewhat dual feasibility violations:")
-                # # println("2.1) c-A'y >= 0: ", sum(problem.objective_vector .< problem.constraint_matrix_t * current_dual_solution))
+                    current_primal_solution .= ir_output.current_primal_solution
+                    current_dual_solution .= ir_output.current_dual_solution
+                    primal_product .= ir_output.primal_product
+                    dual_product .= ir_output.dual_product
+                    buffer_primal_gradient .= ir_output.primal_gradient
 
-            #     problem.variable_lower_bound,#Vector{Float64}(problem.variable_lower_bound),
-            #     problem.variable_upper_bound,#Vector{Float64}(problem.variable_upper_bound),
-            #     CUDA.CUSPARSE.CuSparseMatrixCSR(spzeros(length(current_primal_solution), length(current_primal_solution))),#spzeros(length(x_k), length(x_k)), # objective matrix. I guess it is Q: x'Qx + c'x + b
-            #     problem.objective_vector,#Vector{Float64}(problem.objective_vector),
-            #     problem.objective_constant,#problem.objective_constant,  # Objective constant. I guess it is b: x'Qx + c'x + b
-            #     problem.constraint_matrix,#cu_quad_to_quad_matrix(problem.constraint_matrix),
-            #     problem.right_hand_side, #Vector{Float64}(problem.right_hand_side),
-            #     problem.num_equalities, #problem.num_equalities,
-            # )
-                # println("norm of primal sol:")
-                # println(CUDA.norm(current_primal_solution))
-                # println("norm of dual sol:")
-                # println(CUDA.norm(current_dual_solution))
+                end
 
                 ir_refinement_applied = true
+                
             end
-        else
-        # Current point is much better than average point.
-            if verbosity >= 4
-                print("  Restarted to current")
-            end
-        end
 
         if verbosity >= 4
             print(" after ", rpad(restart_length, 4), " iterations")
